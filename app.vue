@@ -16,18 +16,10 @@ const notify = (message: string) => {
 }
 
 const handleAdminNav = (view: string) => {
-  if (view === 'settings') {
-    notify('Settings are available in the next workspace update.')
-    return
-  }
   adminView.value = view
 }
 
 const handleStudentNav = (view: string) => {
-  if (view === 'settings') {
-    notify('Settings are available in the next workspace update.')
-    return
-  }
   studentView.value = view
 }
 
@@ -91,6 +83,10 @@ const switchPortal = () => {
             v-else-if="portal === 'admin' && adminView === 'analytics'"
             @notify="notify"
           />
+          <AdminSettings
+            v-else-if="portal === 'admin' && adminView === 'settings'"
+            @notify="notify"
+          />
 
           <!-- Student views -->
           <StudentOverview
@@ -104,6 +100,14 @@ const switchPortal = () => {
           />
           <StudentSchedule
             v-else-if="portal === 'student' && studentView === 'schedule'"
+            @notify="notify"
+          />
+          <StudentSupport
+            v-else-if="portal === 'student' && studentView === 'support'"
+            @notify="notify"
+          />
+          <StudentSettings
+            v-else-if="portal === 'student' && studentView === 'settings'"
             @notify="notify"
           />
         </div>

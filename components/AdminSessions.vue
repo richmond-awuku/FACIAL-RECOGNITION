@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useDatabase } from '~/composables/useDatabase'
 import type { Session, Course, AttendanceRecord, Student } from '~/types/database'
+import SessionSummaryModal from '~/components/SessionSummaryModal.vue'
 
 const emit = defineEmits<{
   notify: [message: string]
@@ -18,7 +19,13 @@ const {
   updateSessionStats,
   getStudents,
   subscribeToSessionAttendance,
+  getSessionReviewItems,
 } = useDatabase()
+
+const showSummary = ref(false)
+const summarySession = ref<(Session & { courses?: Course }) | null>(null)
+const summaryAttendance = ref<(AttendanceRecord & { students?: Student })[]>([])
+const summaryReviewItems = ref<any[]>([])
 
 const session = ref<(Session & { courses: Course }) | null>(null)
 const attendance = ref<(AttendanceRecord & { students: Student })[]>([])
@@ -182,7 +189,16 @@ async function handleStop() {
     return
   }
   try {
-    await stopSession(session.value.id)
+    const stoppedSession = session.value
+    const stoppedAttendance = [...attendance.value]
+    await stopSession(stoppedSession.id)
+    await updateSessionStats(stoppedSession.id)
+    const finalAttendance = await getAttendanceBySession(stoppedSession.id)
+    const reviewItems = await getSessionReviewItems(stoppedSession.id)
+    summarySession.value = { ...stoppedSession, status: 'completed', ended_at: new Date().toISOString() }
+    summaryAttendance.value = finalAttendance
+    summaryReviewItems.value = reviewItems
+    showSummary.value = true
     if (subscription) {
       subscription.unsubscribe()
       subscription = null
@@ -190,7 +206,7 @@ async function handleStop() {
     stopCamera()
     session.value = null
     attendance.value = []
-    emit('notify', 'Session stopped safely.')
+    emit('notify', 'Session stopped. Summary report generated.')
   } catch (e: any) {
     emit('notify', `Error stopping session: ${e.message}`)
   }
@@ -405,6 +421,16 @@ async function simulateScan() {
         </aside>
       </div>
     </template>
+
+    <!-- Session summary modal -->
+    <SessionSummaryModal
+      v-if="showSummary && summarySession"
+      :session="summarySession"
+      :attendance="summaryAttendance"
+      :review-items="summaryReviewItems"
+      @close="showSummary = false"
+      @export="emit('notify', 'Report export queued for download.')"
+    />
 
     <!-- Manual entry modal -->
     <BaseModal

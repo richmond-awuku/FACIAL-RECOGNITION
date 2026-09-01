@@ -23,6 +23,7 @@ const studentNav = [
   { id: 'overview', label: 'Overview', icon: '▦' },
   { id: 'attendance', label: 'My Attendance', icon: '♢' },
   { id: 'schedule', label: 'Schedule', icon: '□' },
+  { id: 'support', label: 'Support', icon: '✦' },
 ]
 
 const navItems = computed(() => portal.value === 'admin' ? adminNav : studentNav)
@@ -65,7 +66,12 @@ const handleSignOut = () => {
         {{ item.label }}
       </button>
       <button
-        class="w-full text-left px-5 py-4 flex items-center gap-4 text-base transition-colors border-l-4 border-transparent text-gray-300 hover:bg-navy-700 hover:text-cyan"
+        :class="[
+          'w-full text-left px-5 py-4 flex items-center gap-4 text-base transition-colors border-l-4',
+          activeView === 'settings'
+            ? 'bg-navy-700 text-cyan border-cyan'
+            : 'border-transparent text-gray-300 hover:bg-navy-700 hover:text-cyan'
+        ]"
         @click="$emit('navigate', 'settings')"
       >
         <span class="w-5 text-center text-xl">⚙</span>
