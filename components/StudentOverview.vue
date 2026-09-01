@@ -10,7 +10,11 @@ const emit = defineEmits<{
 }>()
 
 const { currentStudent } = usePortal()
-const { getAttendanceByStudent, getStudentCourses } = useDatabase()
+const { getAttendanceByStudent, getStudentCourses, createSupportTicket } = useDatabase()
+
+const overrideCategory = ref('Missed Attendance')
+const overrideDescription = ref('')
+const submittingOverride = ref(false)
 
 const attendance = ref<(AttendanceRecord & { sessions: Session & { courses: Course } })[]>([])
 const courses = ref<Course[]>([])
@@ -57,6 +61,28 @@ const formatScanTime = (iso: string, index: number) => {
 }
 
 const recentAttendance = computed(() => attendance.value.slice(0, 4))
+
+async function submitOverride() {
+  if (!currentStudent.value || !overrideDescription.value.trim()) {
+    emit('notify', 'Please describe the issue before submitting.')
+    return
+  }
+  submittingOverride.value = true
+  try {
+    await createSupportTicket({
+      student_id: currentStudent.value.id,
+      category: overrideCategory.value,
+      description: overrideDescription.value.trim(),
+    })
+    showManualOverride.value = false
+    overrideDescription.value = ''
+    emit('notify', 'Manual override request submitted for review.')
+  } catch (e: any) {
+    emit('notify', `Error: ${e.message}`)
+  } finally {
+    submittingOverride.value = false
+  }
+}
 </script>
 
 <template>
@@ -97,7 +123,7 @@ const recentAttendance = computed(() => attendance.value.slice(0, 4))
           <button class="bg-white border border-gray-300 p-3 text-ink hover:bg-gray-50 transition-colors" @click="showManualOverride = true">
             ⌾ Request Manual Override
           </button>
-          <button class="bg-white border border-gray-300 p-3 text-danger hover:bg-red-50 transition-colors" @click="$emit('notify', 'Issue report form opened.')">
+          <button class="bg-white border border-gray-300 p-3 text-danger hover:bg-red-50 transition-colors" @click="emit('navigate', 'support')">
             ⚠ Report Issue
           </button>
         </article>
@@ -155,10 +181,28 @@ const recentAttendance = computed(() => attendance.value.slice(0, 4))
         :show="showManualOverride"
         title="Request Manual Override"
         message="Send a secure request to an administrator to review your attendance record."
-        button-text="Send Request"
+        :button-text="submittingOverride ? 'Submitting...' : 'Send Request'"
         @close="showManualOverride = false"
-        @confirm="showManualOverride = false; $emit('notify', 'Manual override request sent.')"
-      />
+        @confirm="submitOverride"
+      >
+        <template #default>
+          <div class="text-left">
+            <label class="block font-mono text-[11px] tracking-wide mt-4">
+              CATEGORY
+              <select v-model="overrideCategory" class="input-field mt-2">
+                <option>Missed Attendance</option>
+                <option>Incorrect Identification</option>
+                <option>Biometric Enrollment</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label class="block font-mono text-[11px] tracking-wide mt-4">
+              DESCRIPTION
+              <textarea v-model="overrideDescription" rows="4" class="input-field mt-2" placeholder="Describe what happened and include any relevant details..."></textarea>
+            </label>
+          </div>
+        </template>
+      </BaseModal>
     </template>
   </section>
 </template>

@@ -6,6 +6,8 @@ type AdminProfile = { full_name: string; department: string; admin_id: string }
 type Notifications = { session_starts: boolean; system_health: boolean; at_risk_summaries: boolean; real_time_intervention: boolean }
 type Biometrics = { confidence_threshold: number; anti_spoofing_sensitivity: 'Low' | 'Standard' | 'High'; auto_schedule_enabled: boolean; archival_days: number; telemetry_sharing: boolean }
 
+type CameraNode = { id: string; name: string; location: string; status: 'online' | 'offline' | 'degraded'; firmware: string }
+
 const emit = defineEmits<{ notify: [message: string] }>()
 const { getSystemSetting, saveSystemSetting } = useDatabase()
 const loading = ref(true)
@@ -14,17 +16,24 @@ const error = ref('')
 const profile = reactive<AdminProfile>({ full_name: '', department: '', admin_id: '' })
 const notifications = reactive<Notifications>({ session_starts: true, system_health: true, at_risk_summaries: true, real_time_intervention: false })
 const biometrics = reactive<Biometrics>({ confidence_threshold: 85, anti_spoofing_sensitivity: 'Standard', auto_schedule_enabled: false, archival_days: 90, telemetry_sharing: false })
+const nodes = ref<CameraNode[]>([])
+
+function addNode() {
+  nodes.value.push({ id: `NODE-${Date.now().toString(36).toUpperCase()}`, name: 'New Camera Node', location: 'Lecture Hall', status: 'online', firmware: 'v2.1.0' })
+}
 
 onMounted(async () => {
   try {
-    const [savedProfile, savedNotifications, savedBiometrics] = await Promise.all([
+    const [savedProfile, savedNotifications, savedBiometrics, savedNodes] = await Promise.all([
       getSystemSetting<AdminProfile>('admin_profile'),
       getSystemSetting<Notifications>('admin_notifications'),
       getSystemSetting<Biometrics>('biometric_settings'),
+      getSystemSetting<{ nodes: CameraNode[] }>('node_settings'),
     ])
     if (savedProfile) Object.assign(profile, savedProfile)
     if (savedNotifications) Object.assign(notifications, savedNotifications)
     if (savedBiometrics) Object.assign(biometrics, savedBiometrics)
+    if (savedNodes?.nodes) nodes.value = savedNodes.nodes
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Unable to load settings.'
   } finally {
@@ -40,6 +49,7 @@ async function saveSettings() {
       saveSystemSetting('admin_profile', { ...profile }),
       saveSystemSetting('admin_notifications', { ...notifications }),
       saveSystemSetting('biometric_settings', { ...biometrics }),
+      saveSystemSetting('node_settings', { nodes: nodes.value }),
     ])
     emit('notify', 'Settings saved successfully.')
   } catch (err) {
@@ -99,6 +109,28 @@ async function saveSettings() {
             <label class="rounded-md border border-line p-4"><strong class="block">Archive duration</strong><small class="text-gray-500 block mb-2">Raw logs before automatic purge.</small><select v-model.number="biometrics.archival_days" class="input-field"><option :value="30">30 days</option><option :value="90">90 days</option><option :value="180">180 days</option></select></label>
           </div>
           <label class="flex items-center gap-3 mt-5 text-sm"><input v-model="biometrics.telemetry_sharing" type="checkbox" class="accent-cyan" /> Share anonymized telemetry for institutional analytics</label>
+        </div>
+        <div class="card p-6">
+          <div class="flex items-center justify-between border-b border-line pb-4">
+            <h2 class="text-xl font-semibold">Node Management</h2>
+            <button class="btn-outline" @click="addNode">+ Add Node</button>
+          </div>
+          <div v-if="nodes.length === 0" class="p-6 text-center text-gray-400">No camera nodes configured.</div>
+          <div v-else class="divide-y divide-line">
+            <div v-for="(node, i) in nodes" :key="i" class="py-4 flex items-center gap-4">
+              <span :class="['w-3 h-3 rounded-full flex-shrink-0', node.status === 'online' ? 'bg-success' : node.status === 'degraded' ? 'bg-warning' : 'bg-danger']" />
+              <div class="flex-1 min-w-0">
+                <strong class="block">{{ node.name }}</strong>
+                <small class="text-gray-500 font-mono text-xs">{{ node.location }} · {{ node.firmware }}</small>
+              </div>
+              <select v-model="node.status" class="btn-outline text-xs">
+                <option value="online">Online</option>
+                <option value="degraded">Degraded</option>
+                <option value="offline">Offline</option>
+              </select>
+              <button class="text-danger text-xs font-mono uppercase hover:underline" @click="nodes.splice(i, 1)">Remove</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

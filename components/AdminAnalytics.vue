@@ -45,7 +45,7 @@ onMounted(async () => {
 
 const atRiskStudents = computed(() => {
   return students.value
-    .filter(s => Number(s.attendance_rate) < 85)
+    .filter(s => Number(s.attendance_rate) < 70)
     .filter(s => departmentFilter.value === 'All Departments' || s.department === departmentFilter.value)
     .filter(s => !searchQuery.value || s.student_id.toLowerCase().includes(searchQuery.value.toLowerCase()))
     .slice(0, 10)
@@ -198,7 +198,7 @@ const trendAreaPath = computed(() => {
         <div class="min-h-[94px] border-b border-line px-6 flex items-center justify-between">
           <div>
             <h2 class="text-xl">⚠ At-Risk Students</h2>
-            <p class="mt-1 text-gray-500 text-sm">Students with attendance rate below 85%</p>
+            <p class="mt-1 text-gray-500 text-sm">Students with attendance rate below 70%</p>
           </div>
           <div class="w-[230px] h-9 border border-gray-300 rounded bg-white flex items-center gap-2.5 px-3 text-gray-500">
             <span>⌕</span>
