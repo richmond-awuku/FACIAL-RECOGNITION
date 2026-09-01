@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans text-ink bg-surface antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-cyan text-navy font-mono uppercase tracking-wider text-xs px-5 py-3.5 rounded-md font-medium transition-all hover:brightness-110 hover:-translate-y-px shadow-lg shadow-cyan/20;
+  }
+  .btn-dark {
+    @apply bg-navy text-white font-mono uppercase tracking-wider text-xs px-5 py-3.5 rounded-md font-medium transition-all hover:bg-navy-light;
+  }
+  .btn-outline {
+    @apply border border-gray-300 bg-white text-ink font-mono uppercase tracking-wider text-xs px-3.5 py-2.5 rounded-md transition-all hover:bg-gray-50;
+  }
+  .btn-danger {
+    @apply bg-danger text-white font-mono uppercase tracking-wider text-xs px-5 py-3.5 rounded-md transition-all hover:brightness-110;
+  }
+  .card {
+    @apply bg-white border border-line rounded-lg;
+  }
+  .table-head {
+    @apply bg-gray-100 font-mono text-[11px] uppercase tracking-wide text-gray-600 grid items-center min-h-[52px] px-4 gap-4;
+  }
+  .table-row {
+    @apply border-t border-line text-ink grid items-center min-h-[52px] px-4 gap-4;
+  }
+  .status-tag {
+    @apply border rounded px-2 py-1 font-mono text-[11px] w-max;
+  }
+  .status-verified {
+    @apply border-cyan-light bg-cyan-light/20 text-cyan-dark;
+  }
+  .status-pending {
+    @apply border-gray-300 bg-gray-100 text-gray-600;
+  }
+  .status-flagged {
+    @apply border-red-300 bg-red-50 text-danger;
+  }
+  .input-field {
+    @apply w-full h-11 border border-gray-300 rounded-md px-4 bg-white text-ink outline-none transition-colors focus:border-cyan focus:ring-2 focus:ring-cyan/20;
+  }
+}
