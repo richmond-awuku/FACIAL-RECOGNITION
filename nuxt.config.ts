@@ -2,12 +2,16 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
   devtools: { enabled: false },
+  // Auth state lives in localStorage (JWT); this is a fully auth-gated SPA with
+  // no SEO surface, so render client-side only and avoid hydration flicker.
+  ssr: false,
   modules: ['@nuxtjs/tailwindcss'],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     public: {
       supabaseUrl: process.env.VITE_SUPABASE_URL || '',
       supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY || '',
+      backendUrl: process.env.VITE_BACKEND_URL || 'http://localhost:8000',
     },
   },
   app: {

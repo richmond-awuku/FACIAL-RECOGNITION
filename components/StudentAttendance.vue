@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { usePortal } from '~/composables/usePortal'
-import { useDatabase } from '~/composables/useDatabase'
+import { useApi } from '~/composables/useApi'
 import type { AttendanceRecord, Session, Course } from '~/types/database'
 
 const emit = defineEmits<{
@@ -9,7 +9,7 @@ const emit = defineEmits<{
 }>()
 
 const { currentStudent } = usePortal()
-const { getAttendanceByStudent, getStudentCourses } = useDatabase()
+const api = useApi()
 
 const attendance = ref<(AttendanceRecord & { sessions: Session & { courses: Course } })[]>([])
 const courses = ref<Course[]>([])
@@ -25,8 +25,8 @@ onMounted(async () => {
   }
   try {
     const [attData, courseData] = await Promise.all([
-      getAttendanceByStudent(currentStudent.value.id),
-      getStudentCourses(currentStudent.value.id),
+      api.getAttendanceByStudent(currentStudent.value.id),
+      api.getStudentCourses(currentStudent.value.id),
     ])
     attendance.value = attData
     courses.value = courseData

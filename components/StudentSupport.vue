@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useDatabase } from '~/composables/useDatabase'
+import { useApi } from '~/composables/useApi'
 import { usePortal } from '~/composables/usePortal'
 
 const emit = defineEmits<{ notify: [message: string] }>()
 const { currentStudent } = usePortal()
-const { getSupportTickets, createSupportTicket, getStudentCourses } = useDatabase()
+const api = useApi()
 const loading = ref(true)
 const submitting = ref(false)
 const error = ref('')
@@ -20,8 +20,8 @@ onMounted(async () => {
   if (!currentStudent.value) return
   try {
     const [savedTickets, savedCourses] = await Promise.all([
-      getSupportTickets(currentStudent.value.id),
-      getStudentCourses(currentStudent.value.id),
+      api.getSupportTickets(currentStudent.value.id),
+      api.getStudentCourses(currentStudent.value.id),
     ])
     tickets.value = savedTickets
     courses.value = savedCourses
@@ -38,19 +38,19 @@ async function submitTicket() {
     return
   }
   submitting.value = true
-  try {
-    await createSupportTicket({
-      student_id: currentStudent.value.id,
-      category: category.value,
-      reference_id: referenceId.value,
-      description: description.value.trim(),
-    })
-    tickets.value = await getSupportTickets(currentStudent.value.id)
-    showForm.value = false
-    description.value = ''
-    referenceId.value = ''
-    emit('notify', 'Support request submitted successfully.')
-  } catch (err) {
+    try {
+      await api.createSupportTicket({
+        student_id: currentStudent.value.id,
+        category: category.value,
+        reference_id: referenceId.value,
+        description: description.value.trim(),
+      })
+      tickets.value = await api.getSupportTickets(currentStudent.value.id)
+      showForm.value = false
+      description.value = ''
+      referenceId.value = ''
+      emit('notify', 'Support request submitted successfully.')
+    } catch (err) {
     error.value = err instanceof Error ? err.message : 'Unable to submit your request.'
   } finally {
     submitting.value = false

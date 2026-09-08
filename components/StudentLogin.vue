@@ -10,6 +10,7 @@ const emit = defineEmits<{
 const { studentLogin } = usePortal()
 
 const matricNumber = ref('')
+const password = ref('')
 const loading = ref(false)
 const errorMsg = ref('')
 
@@ -19,9 +20,13 @@ const handleSubmit = async () => {
     errorMsg.value = 'Please enter your student ID.'
     return
   }
+  if (!password.value) {
+    errorMsg.value = 'Please enter your password.'
+    return
+  }
   loading.value = true
   try {
-    const result = await studentLogin(matricNumber.value.trim())
+    const result = await studentLogin(matricNumber.value.trim(), password.value)
     if (!result.success) {
       errorMsg.value = result.error || 'Login failed.'
       return
@@ -59,12 +64,17 @@ const handleSubmit = async () => {
 
         <div class="mt-24 mb-8">
           <h1 class="text-4xl tracking-tight">Student Portal</h1>
-          <p class="text-gray-600 mt-2">Enter your Student ID to access your secure dashboard.</p>
+          <p class="text-gray-600 mt-2">Enter your Student ID and password to access your secure dashboard.</p>
         </div>
 
         <label class="block text-ink font-mono text-[11px] tracking-wide mt-6">
           STUDENT ID
           <input v-model="matricNumber" type="text" required class="input-field mt-2" placeholder="e.g. STU-8943-AI" />
+        </label>
+
+        <label class="block text-ink font-mono text-[11px] tracking-wide mt-5">
+          PASSWORD
+          <PasswordInput v-model="password" class="mt-2" autocomplete="current-password" :required="true" />
         </label>
 
         <p v-if="errorMsg" class="mt-4 text-sm text-danger">{{ errorMsg }}</p>

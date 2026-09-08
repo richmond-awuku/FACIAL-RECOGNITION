@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { useDatabase } from '~/composables/useDatabase'
+import { useApi } from '~/composables/useApi'
 
 type AdminProfile = { full_name: string; department: string; admin_id: string }
 type Notifications = { session_starts: boolean; system_health: boolean; at_risk_summaries: boolean; real_time_intervention: boolean }
@@ -9,7 +9,7 @@ type Biometrics = { confidence_threshold: number; anti_spoofing_sensitivity: 'Lo
 type CameraNode = { id: string; name: string; location: string; status: 'online' | 'offline' | 'degraded'; firmware: string }
 
 const emit = defineEmits<{ notify: [message: string] }>()
-const { getSystemSetting, saveSystemSetting } = useDatabase()
+const api = useApi()
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
@@ -18,6 +18,34 @@ const notifications = reactive<Notifications>({ session_starts: true, system_hea
 const biometrics = reactive<Biometrics>({ confidence_threshold: 85, anti_spoofing_sensitivity: 'Standard', auto_schedule_enabled: false, archival_days: 90, telemetry_sharing: false })
 const nodes = ref<CameraNode[]>([])
 
+// ── Password change ──────────────────────────────────────
+const oldPassword = ref('')
+const newPassword = ref('')
+const changingPw = ref(false)
+const pwError = ref('')
+
+async function changePassword() {
+  pwError.value = ''
+  if (!oldPassword.value || !newPassword.value) {
+    pwError.value = 'Enter your current and new password.'
+    return
+  }
+  changingPw.value = true
+  try {
+    await api.changePassword(oldPassword.value, newPassword.value)
+    oldPassword.value = ''
+    newPassword.value = ''
+    emit('notify', 'Password changed.')
+  } catch (err: any) {
+    const p = err?.payload
+    pwError.value = p?.old_password?.[0] || p?.old_password
+      || p?.new_password?.[0] || p?.new_password
+      || err?.message || 'Unable to change password.'
+  } finally {
+    changingPw.value = false
+  }
+}
+
 function addNode() {
   nodes.value.push({ id: `NODE-${Date.now().toString(36).toUpperCase()}`, name: 'New Camera Node', location: 'Lecture Hall', status: 'online', firmware: 'v2.1.0' })
 }
@@ -25,10 +53,10 @@ function addNode() {
 onMounted(async () => {
   try {
     const [savedProfile, savedNotifications, savedBiometrics, savedNodes] = await Promise.all([
-      getSystemSetting<AdminProfile>('admin_profile'),
-      getSystemSetting<Notifications>('admin_notifications'),
-      getSystemSetting<Biometrics>('biometric_settings'),
-      getSystemSetting<{ nodes: CameraNode[] }>('node_settings'),
+      api.getSystemSetting<AdminProfile>('admin_profile'),
+      api.getSystemSetting<Notifications>('admin_notifications'),
+      api.getSystemSetting<Biometrics>('biometric_settings'),
+      api.getSystemSetting<{ nodes: CameraNode[] }>('node_settings'),
     ])
     if (savedProfile) Object.assign(profile, savedProfile)
     if (savedNotifications) Object.assign(notifications, savedNotifications)
@@ -46,10 +74,10 @@ async function saveSettings() {
   error.value = ''
   try {
     await Promise.all([
-      saveSystemSetting('admin_profile', { ...profile }),
-      saveSystemSetting('admin_notifications', { ...notifications }),
-      saveSystemSetting('biometric_settings', { ...biometrics }),
-      saveSystemSetting('node_settings', { nodes: nodes.value }),
+      api.saveSystemSetting('admin_profile', { ...profile }),
+      api.saveSystemSetting('admin_notifications', { ...notifications }),
+      api.saveSystemSetting('biometric_settings', { ...biometrics }),
+      api.saveSystemSetting('node_settings', { nodes: nodes.value }),
     ])
     emit('notify', 'Settings saved successfully.')
   } catch (err) {
@@ -80,6 +108,13 @@ async function saveSettings() {
           <label class="block mt-5 text-xs font-mono uppercase text-gray-500">Full name<input v-model="profile.full_name" class="input-field mt-2" /></label>
           <label class="block mt-4 text-xs font-mono uppercase text-gray-500">Department<input v-model="profile.department" class="input-field mt-2" /></label>
           <label class="block mt-4 text-xs font-mono uppercase text-gray-500">Administrator ID<input v-model="profile.admin_id" class="input-field mt-2" /></label>
+        </div>
+        <div class="card p-6">
+          <h2 class="text-xl font-semibold border-b border-line pb-4">Password</h2>
+          <label class="block mt-5 text-xs font-mono uppercase text-gray-500">Current password<PasswordInput v-model="oldPassword" class="mt-2" autocomplete="current-password" /></label>
+          <label class="block mt-4 text-xs font-mono uppercase text-gray-500">New password<PasswordInput v-model="newPassword" class="mt-2" autocomplete="new-password" /></label>
+          <p v-if="pwError" class="mt-3 text-sm text-danger">{{ pwError }}</p>
+          <button class="btn-outline mt-3" :disabled="changingPw" @click="changePassword">{{ changingPw ? 'Updating…' : 'Update Password' }}</button>
         </div>
         <div class="card p-6 bg-cyan-light/10">
           <h2 class="text-xl font-semibold border-b border-line pb-4">Biometric Security</h2>

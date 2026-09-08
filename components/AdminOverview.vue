@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useDatabase } from '~/composables/useDatabase'
-import { useSupabase } from '~/utils/supabase'
+import { useApi } from '~/composables/useApi'
 import type { Student, Session, AttendanceRecord } from '~/types/database'
 
 const emit = defineEmits<{
@@ -9,8 +8,7 @@ const emit = defineEmits<{
   viewLog: []
 }>()
 
-const { getStudents, getActiveSessions } = useDatabase()
-const supabase = useSupabase()
+const api = useApi()
 
 const students = ref<Student[]>([])
 const activeSessions = ref<(Session & { courses: any })[]>([])
@@ -30,20 +28,15 @@ const todayAttendance = computed(() => {
 onMounted(async () => {
   try {
     const [studentData, sessionData] = await Promise.all([
-      getStudents(),
-      getActiveSessions(),
+      api.getStudents(),
+      api.getActiveSessions(),
     ])
     students.value = studentData
     activeSessions.value = sessionData
 
     if (sessionData.length > 0) {
-      const { data: records } = await supabase
-        .from('attendance_records')
-        .select('*, students(*)')
-        .eq('session_id', sessionData[0].id)
-        .order('check_in_time', { ascending: false })
-        .limit(5)
-      recentRecords.value = (records || []) as any
+      const records = await api.getAttendanceBySession(sessionData[0].id)
+      recentRecords.value = ((records || []) as any).slice(0, 5)
     }
   } catch (e: any) {
     error.value = e.message

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { usePortal } from '~/composables/usePortal'
-import { useDatabase } from '~/composables/useDatabase'
+import { useApi } from '~/composables/useApi'
 import type { AttendanceRecord, Session, Course } from '~/types/database'
 
 const emit = defineEmits<{
@@ -10,7 +10,7 @@ const emit = defineEmits<{
 }>()
 
 const { currentStudent } = usePortal()
-const { getAttendanceByStudent, getStudentCourses, createSupportTicket } = useDatabase()
+const api = useApi()
 
 const overrideCategory = ref('Missed Attendance')
 const overrideDescription = ref('')
@@ -29,8 +29,8 @@ onMounted(async () => {
   }
   try {
     const [attData, courseData] = await Promise.all([
-      getAttendanceByStudent(currentStudent.value.id),
-      getStudentCourses(currentStudent.value.id),
+      api.getAttendanceByStudent(currentStudent.value.id),
+      api.getStudentCourses(currentStudent.value.id),
     ])
     attendance.value = attData
     courses.value = courseData
@@ -69,7 +69,7 @@ async function submitOverride() {
   }
   submittingOverride.value = true
   try {
-    await createSupportTicket({
+    await api.createSupportTicket({
       student_id: currentStudent.value.id,
       category: overrideCategory.value,
       description: overrideDescription.value.trim(),

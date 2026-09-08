@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useDatabase } from '~/composables/useDatabase'
-import { useSupabase } from '~/utils/supabase'
+import { useApi } from '~/composables/useApi'
 import type { Student, Session, AttendanceRecord } from '~/types/database'
 
 const emit = defineEmits<{
   notify: [message: string]
 }>()
 
-const { getStudents } = useDatabase()
-const supabase = useSupabase()
+const api = useApi()
 
 const students = ref<Student[]>([])
 const allSessions = ref<(Session & { courses: any })[]>([])
@@ -22,19 +20,13 @@ const error = ref('')
 
 onMounted(async () => {
   try {
-    const studentData = await getStudents()
+    const studentData = await api.getStudents()
     students.value = studentData
 
-    const { data: sessions } = await supabase
-      .from('sessions')
-      .select('*, courses(*)')
-      .order('created_at', { ascending: false })
+    const sessions = await api.getAllSessions()
     allSessions.value = (sessions || []) as any
 
-    const { data: records } = await supabase
-      .from('attendance_records')
-      .select('*, students(*), sessions(*, courses(*))')
-      .order('check_in_time', { ascending: false })
+    const records = await api.getAttendanceRecords()
     allRecords.value = (records || []) as any
   } catch (e: any) {
     error.value = e.message

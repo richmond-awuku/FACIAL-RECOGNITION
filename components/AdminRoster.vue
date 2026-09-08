@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useDatabase } from '~/composables/useDatabase'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useApi } from '~/composables/useApi'
+import { useCamera } from '~/composables/useCamera'
 import type { Student } from '~/types/database'
 
 const emit = defineEmits<{
   notify: [message: string]
 }>()
 
-const { getStudents, createStudent, deleteStudent, updateStudent } = useDatabase()
+const api = useApi()
+const cam = useCamera()
+const videoRef = cam.videoRef
 
 const students = ref<Student[]>([])
 const searchQuery = ref('')
@@ -23,14 +26,21 @@ const addingStudent = ref(false)
 // View student modal
 const viewStudent = ref<Student | null>(null)
 
+// Verify (staff-supervised enrollment) modal
+const verifyTarget = ref<Student | null>(null)
+const verifying = ref(false)
+const verifyError = ref('')
+
 onMounted(async () => {
   await loadStudents()
 })
 
+onBeforeUnmount(() => closeVerify())
+
 async function loadStudents() {
   loading.value = true
   try {
-    students.value = await getStudents()
+    students.value = await api.getStudents()
   } catch (e: any) {
     error.value = e.message
   } finally {
@@ -74,7 +84,7 @@ async function handleAddStudent() {
   }
   addingStudent.value = true
   try {
-    await createStudent({
+    const created: any = await api.createStudent({
       student_id: newStudent.value.student_id,
       full_name: newStudent.value.full_name,
       email: newStudent.value.email,
@@ -83,7 +93,12 @@ async function handleAddStudent() {
     await loadStudents()
     showAddForm.value = false
     newStudent.value = { student_id: '', full_name: '', email: '', department: 'Computer Science' }
-    emit('notify', 'Student added successfully.')
+    emit('notify',
+      created?.login_provisioned === false
+        ? 'Student added, but a login could not be created (the ID may already be in use). Set one up manually.'
+        : created?.credentials_email_sent === false
+          ? 'Student added — no email on file, so login credentials were not sent.'
+          : 'Student added. A login and temporary password were emailed to the student.')
   } catch (e: any) {
     emit('notify', `Error adding student: ${e.message}`)
   } finally {
@@ -92,18 +107,48 @@ async function handleAddStudent() {
 }
 
 async function handleVerify(student: Student) {
+  verifyError.value = ''
+  verifyTarget.value = student
+  await nextTick()
+  await cam.open()
+  verifyError.value = cam.cameraError.value
+}
+
+function closeVerify() {
+  cam.close()
+  verifyTarget.value = null
+  verifying.value = false
+}
+
+async function runVerify() {
+  if (!cam.ready.value || !verifyTarget.value) return
+  const student = verifyTarget.value
+  verifying.value = true
+  verifyError.value = ''
   try {
-    await updateStudent(student.id, { enrollment_status: 'Verified', face_enrolled: true })
+    const blob = await cam.grabFrame()
+    if (!blob) {
+      verifyError.value = 'Could not capture a frame. Check lighting and retry.'
+      verifying.value = false
+      return
+    }
+    const fd = new FormData()
+    fd.append('image', blob, 'reference.jpg')
+    await api.enrollStudentFace(student.id, fd)
     await loadStudents()
-    emit('notify', `${student.full_name} verified.`)
+    emit('notify', `${student.full_name} enrolled and verified.`)
+    closeVerify()
   } catch (e: any) {
-    emit('notify', `Error: ${e.message}`)
+    if (e?.status === 422) verifyError.value = 'No face detected in the frame. Reposition the student and retry.'
+    else if (e?.status === 400) verifyError.value = e?.message || 'Invalid capture. Retry.'
+    else verifyError.value = e?.message || 'Enrollment failed. Retry.'
+    verifying.value = false
   }
 }
 
 async function handleDelete(student: Student) {
   try {
-    await deleteStudent(student.id)
+    await api.deleteStudent(student.id)
     await loadStudents()
     emit('notify', `${student.full_name} removed from roster.`)
   } catch (e: any) {
@@ -215,5 +260,29 @@ async function handleDelete(student: Student) {
       @close="viewStudent = null"
       @confirm="viewStudent = null"
     />
+
+    <!-- Verify / enroll modal -->
+    <div v-if="verifyTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-navy/60 backdrop-blur-sm p-6" @click.self="closeVerify">
+      <div class="bg-white rounded-lg shadow-2xl w-full max-w-md overflow-hidden">
+        <div class="px-6 py-5 border-b border-line flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-semibold">Enroll &amp; Verify</h2>
+            <p class="text-sm text-gray-500 mt-0.5">{{ verifyTarget.full_name }} · {{ verifyTarget.student_id }}</p>
+          </div>
+          <button class="text-gray-400 hover:text-ink text-2xl leading-none" @click="closeVerify">&times;</button>
+        </div>
+        <div class="p-6 space-y-4">
+          <p class="text-sm text-gray-600">Position the student facing the camera in good lighting, then capture a single reference frame. This registers their face and marks them Verified.</p>
+          <div class="relative rounded-md overflow-hidden bg-black aspect-[4/3]">
+            <video ref="videoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
+          </div>
+          <p v-if="verifyError" class="border border-red-200 bg-red-50 text-danger rounded-md px-3 py-2 text-sm">{{ verifyError }}</p>
+          <div class="flex gap-3">
+            <button class="btn-outline flex-1" :disabled="verifying" @click="closeVerify">Cancel</button>
+            <button class="btn-dark flex-1" :disabled="verifying || !cam.ready.value" @click="runVerify">{{ verifying ? 'Enrolling…' : 'Capture &amp; Verify' }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 </template>

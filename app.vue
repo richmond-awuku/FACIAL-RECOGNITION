@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { usePortal } from '~/composables/usePortal'
 
-const { portal, isAuthed, logout, setPortal } = usePortal()
+const { portal, isAuthed, authReady, mustChangePassword, logout, setPortal } = usePortal()
 
 const adminView = ref('overview')
 const studentView = ref('overview')
@@ -36,9 +36,16 @@ const switchPortal = () => {
 
 <template>
   <div>
+    <!-- Session rehydrating after a reload -->
+    <div v-if="!authReady" class="min-h-screen grid place-items-center bg-navy text-white">
+      <div class="flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-cyan">
+        <span class="w-2 h-2 rounded-full bg-cyan animate-pulse"></span> Restoring session…
+      </div>
+    </div>
+
     <!-- Login screens -->
     <AdminLogin
-      v-if="!isAuthed && portal === 'admin'"
+      v-else-if="!isAuthed && portal === 'admin'"
       @login="() => {}"
       @switch-to-student="setPortal('student')"
     />
@@ -46,6 +53,12 @@ const switchPortal = () => {
       v-else-if="!isAuthed && portal === 'student'"
       @login="() => {}"
       @switch-to-admin="setPortal('admin')"
+    />
+
+    <!-- Forced first-login password reset -->
+    <ForcePasswordChange
+      v-else-if="isAuthed && mustChangePassword"
+      @sign-out="handleSignOut"
     />
 
     <!-- Portal -->
@@ -74,6 +87,10 @@ const switchPortal = () => {
             v-else-if="portal === 'admin' && adminView === 'sessions'"
             @notify="notify"
             @view-roster="handleAdminNav('roster')"
+          />
+          <AdminCourses
+            v-else-if="portal === 'admin' && adminView === 'courses'"
+            @notify="notify"
           />
           <AdminRoster
             v-else-if="portal === 'admin' && adminView === 'roster'"

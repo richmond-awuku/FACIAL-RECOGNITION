@@ -15,6 +15,7 @@ const { portal, currentUser, logout } = usePortal()
 const adminNav = [
   { id: 'overview', label: 'Overview', icon: '▦' },
   { id: 'sessions', label: 'Sessions', icon: '▣' },
+  { id: 'courses', label: 'Courses', icon: '❏' },
   { id: 'roster', label: 'Student Roster', icon: '♙' },
   { id: 'analytics', label: 'Analytics', icon: '⌁' },
 ]

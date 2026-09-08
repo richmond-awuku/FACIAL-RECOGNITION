@@ -61,7 +61,6 @@ export type AttendanceWithStudent = AttendanceRecord & {
 }
 
 export type AttendanceWithSession = AttendanceRecord & {
-  sessions?: Session
   sessions?: SessionWithCourse
 }
 
@@ -86,7 +85,7 @@ export type SupportTicket = {
   category: string
   reference_id: string
   description: string
-  status: 'Open' | 'In Review' | 'Resolved' | 'Closed'
+  status: 'Open' | 'In Review' | 'Resolved' | 'Rejected' | 'Closed'
   created_at: string
   updated_at: string
 }

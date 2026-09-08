@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useDatabase } from '~/composables/useDatabase'
+import { useApi } from '~/composables/useApi'
 import type { Session, Course, AttendanceRecord, Student } from '~/types/database'
 import SessionSummaryModal from '~/components/SessionSummaryModal.vue'
 
@@ -9,18 +9,7 @@ const emit = defineEmits<{
   viewRoster: []
 }>()
 
-const {
-  getActiveSessions,
-  getCourses,
-  getAttendanceBySession,
-  startSession,
-  stopSession,
-  recordAttendance,
-  updateSessionStats,
-  getStudents,
-  subscribeToSessionAttendance,
-  getSessionReviewItems,
-} = useDatabase()
+const api = useApi()
 
 const showSummary = ref(false)
 const summarySession = ref<(Session & { courses?: Course }) | null>(null)
@@ -61,18 +50,18 @@ const scanMatch = ref<{ name: string; id: string; confidence: number } | null>(n
 let scanTimer: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
-  try {
+    try {
     const [sessionsData, coursesData, studentsData] = await Promise.all([
-      getActiveSessions(),
-      getCourses(),
-      getStudents(),
+      api.getActiveSessions(),
+      api.getCourses(),
+      api.getStudents(),
     ])
     courses.value = coursesData
     students.value = studentsData
 
     if (sessionsData.length > 0) {
       session.value = sessionsData[0]
-      const records = await getAttendanceBySession(sessionsData[0].id)
+      const records = await api.getAttendanceBySession(sessionsData[0].id)
       attendance.value = records
       subscribeToLiveUpdates(sessionsData[0].id)
     }
@@ -85,23 +74,23 @@ onMounted(async () => {
 
 onUnmounted(() => {
   stopCamera()
-  if (subscription) subscription.unsubscribe()
+  if (subscription?.close) subscription.close()
   if (scanTimer) clearInterval(scanTimer)
 })
 
 function subscribeToLiveUpdates(sessionId: string) {
-  subscription = subscribeToSessionAttendance(sessionId, async (payload: any) => {
+  subscription = api.subscribeToSessionAttendance(sessionId, async (payload: any) => {
     // Fetch updated attendance list
-    const records = await getAttendanceBySession(sessionId)
+    const records = await api.getAttendanceBySession(sessionId)
     attendance.value = records
-    await updateSessionStats(sessionId)
+    await api.updateSessionStats(sessionId)
     // Refresh session data
-    const sessions = await getActiveSessions()
+    const sessions = await api.getActiveSessions()
     if (sessions.length > 0) session.value = sessions[0]
 
     // Show scan match if we have student data
     const newRecord = payload.new as AttendanceRecord & { students: Student }
-    if (newRecord.students) {
+    if (newRecord?.students) {
       scanMatch.value = {
         name: newRecord.students.full_name,
         id: newRecord.students.student_id,
@@ -166,11 +155,11 @@ async function handleStartSession() {
   }
   startingSession.value = true
   try {
-    const newSession = await startSession(selectedCourse.value, sessionRoom.value, expectedCount.value || 0)
-    const sessions = await getActiveSessions()
+    const newSession = await api.startSession(selectedCourse.value, sessionRoom.value, expectedCount.value || 0)
+    const sessions = await api.getActiveSessions()
     if (sessions.length > 0) {
       session.value = sessions[0]
-      attendance.value = await getAttendanceBySession(newSession.id)
+      attendance.value = await api.getAttendanceBySession(newSession.id)
       subscribeToLiveUpdates(newSession.id)
     }
     showStartForm.value = false
@@ -191,16 +180,16 @@ async function handleStop() {
   try {
     const stoppedSession = session.value
     const stoppedAttendance = [...attendance.value]
-    await stopSession(stoppedSession.id)
-    await updateSessionStats(stoppedSession.id)
-    const finalAttendance = await getAttendanceBySession(stoppedSession.id)
-    const reviewItems = await getSessionReviewItems(stoppedSession.id)
+    await api.stopSession(stoppedSession.id)
+    await api.updateSessionStats(stoppedSession.id)
+    const finalAttendance = await api.getAttendanceBySession(stoppedSession.id)
+    const reviewItems = await api.getSessionReviewItems(stoppedSession.id)
     summarySession.value = { ...stoppedSession, status: 'completed', ended_at: new Date().toISOString() }
     summaryAttendance.value = finalAttendance
     summaryReviewItems.value = reviewItems
     showSummary.value = true
-    if (subscription) {
-      subscription.unsubscribe()
+    if (subscription?.close) {
+      subscription.close()
       subscription = null
     }
     stopCamera()
@@ -224,10 +213,10 @@ async function handleManualEntry() {
       return
     }
     const confidence = manualStatus.value === 'Present' ? Math.round(85 + Math.random() * 15) : null
-    await recordAttendance(student.id, session.value.id, manualStatus.value, confidence)
-    await updateSessionStats(session.value.id)
-    attendance.value = await getAttendanceBySession(session.value.id)
-    const sessions = await getActiveSessions()
+    await api.recordAttendance({ student_id: student.id, session_id: session.value.id, status: manualStatus.value, confidence_score: confidence })
+    await api.updateSessionStats(session.value.id)
+    attendance.value = await api.getAttendanceBySession(session.value.id)
+    const sessions = await api.getActiveSessions()
     if (sessions.length > 0) session.value = sessions[0]
     showManualEntry.value = false
     manualStudentId.value = ''
@@ -250,10 +239,10 @@ async function simulateScan() {
   const student = unmarked[Math.floor(Math.random() * unmarked.length)]
   const confidence = Math.round(88 + Math.random() * 12)
   try {
-    await recordAttendance(student.id, session.value.id, 'Present', confidence)
-    await updateSessionStats(session.value.id)
-    attendance.value = await getAttendanceBySession(session.value.id)
-    const sessions = await getActiveSessions()
+    await api.recordAttendance({ student_id: student.id, session_id: session.value.id, status: 'Present', confidence_score: confidence })
+    await api.updateSessionStats(session.value.id)
+    attendance.value = await api.getAttendanceBySession(session.value.id)
+    const sessions = await api.getActiveSessions()
     if (sessions.length > 0) session.value = sessions[0]
     scanMatch.value = { name: student.full_name, id: student.student_id, confidence }
     setTimeout(() => { scanMatch.value = null }, 3000)
