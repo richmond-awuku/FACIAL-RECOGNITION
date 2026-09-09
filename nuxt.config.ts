@@ -9,8 +9,6 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     public: {
-      supabaseUrl: process.env.VITE_SUPABASE_URL || '',
-      supabaseAnonKey: process.env.VITE_SUPABASE_ANON_KEY || '',
       backendUrl: process.env.VITE_BACKEND_URL || 'http://localhost:8000',
     },
   },
