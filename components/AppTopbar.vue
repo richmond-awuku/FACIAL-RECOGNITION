@@ -2,9 +2,6 @@
 import { usePortal } from '~/composables/usePortal'
 
 const { portal, currentUser } = usePortal()
-const emit = defineEmits<{
-  switchPortal: []
-}>()
 
 const searchPlaceholder = computed(() =>
   portal.value === 'student' ? 'Search portal...' : 'Search system data...'
@@ -21,14 +18,12 @@ const searchPlaceholder = computed(() =>
       />
     </div>
     <div class="flex items-center gap-6">
-      <button class="text-xl text-ink hover:text-cyan transition-colors" @click="$emit('switchPortal')">♧</button>
       <button class="text-xl text-ink hover:text-cyan transition-colors">?</button>
-      <button
+      <div
         class="w-8 h-8 rounded-full bg-cyan-light text-[10px] font-bold border-2 border-cyan flex items-center justify-center"
-        @click="$emit('switchPortal')"
       >
         {{ currentUser?.id || 'AU' }}
-      </button>
+      </div>
     </div>
   </header>
 </template>

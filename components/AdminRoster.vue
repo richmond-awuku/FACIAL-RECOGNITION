@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { useCamera } from '~/composables/useCamera'
+import { usePortal } from '~/composables/usePortal'
 import type { Student } from '~/types/database'
 
 const emit = defineEmits<{
@@ -11,6 +12,7 @@ const emit = defineEmits<{
 const api = useApi()
 const cam = useCamera()
 const videoRef = cam.videoRef
+const { isAdmin } = usePortal()
 
 const students = ref<Student[]>([])
 const searchQuery = ref('')
@@ -208,7 +210,7 @@ async function handleDelete(student: Student) {
         <div class="flex gap-2">
           <button class="font-mono text-[11px] uppercase text-ink hover:text-cyan" @click="viewStudent = student">View</button>
           <button v-if="student.enrollment_status !== 'Verified'" class="font-mono text-[11px] uppercase text-cyan hover:underline" @click="handleVerify(student)">Verify</button>
-          <button class="font-mono text-[11px] uppercase text-danger hover:underline" @click="handleDelete(student)">Del</button>
+          <button v-if="isAdmin" class="font-mono text-[11px] uppercase text-danger hover:underline" @click="handleDelete(student)">Del</button>
         </div>
       </div>
 

@@ -10,7 +10,7 @@ const emit = defineEmits<{
   signOut: []
 }>()
 
-const { portal, currentUser, logout } = usePortal()
+const { portal, currentUser, isLecturer, logout } = usePortal()
 
 const adminNav = [
   { id: 'overview', label: 'Overview', icon: '▦' },
@@ -41,7 +41,7 @@ const handleSignOut = () => {
     <!-- Brand -->
     <div v-if="portal === 'admin'" class="px-6 py-7 border-b border-navy-600">
       <strong class="block text-3xl leading-tight tracking-tight">SecureCheck<br />AI</strong>
-      <span class="block text-gray-400 mt-1.5 text-sm">Admin Dashboard</span>
+      <span class="block text-gray-400 mt-1.5 text-sm">{{ isLecturer ? 'Lecturer Dashboard' : 'Admin Dashboard' }}</span>
     </div>
     <div v-else class="px-6 py-7 border-b border-navy-600">
       <strong class="block text-2xl tracking-tight text-cyan">

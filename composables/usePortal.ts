@@ -8,13 +8,15 @@ const isAuthed = ref(false)
 const authReady = ref(false)
 const mustChangePassword = ref(false)
 const heldPassword = ref<string | null>(null) // temp password from this session's login, used to pre-fill the forced change
-const currentUser = ref<{ name: string; role: string; id: string; email?: string } | null>(null)
+const currentUser = ref<{ name: string; role: string; rawRole: string; id: string; email?: string } | null>(null)
 const currentStudent = ref<{ id: string; student_id: string; full_name: string; department: string; face_enrolled: boolean; attendance_rate: number } | null>(null)
 
 function mapAdminUser(me: any) {
+  const rawRole = (me.role || '').toString().toUpperCase()
   return {
     name: me.first_name ? `${me.first_name} ${me.last_name}` : me.full_name || me.username,
-    role: me.role === 'ADMIN' || me.role === 'admin' ? 'System Admin' : me.role,
+    role: rawRole === 'ADMIN' ? 'System Admin' : rawRole === 'LECTURER' ? 'Lecturer' : me.role,
+    rawRole,
     id: (me.id ?? '').toString().slice(0, 8),
     email: me.email,
   }
@@ -40,6 +42,7 @@ function gateForcedChange(me: any, p: Portal) {
   currentUser.value = {
     name: me.first_name ? `${me.first_name} ${me.last_name}` : me.username,
     role: p === 'student' ? 'Student' : mapAdminUser(me).role,
+    rawRole: p === 'student' ? 'STUDENT' : mapAdminUser(me).rawRole,
     id: (me.id ?? '').toString().slice(0, 8),
     email: me.email,
   }
@@ -60,6 +63,7 @@ export function usePortal() {
     currentUser.value = {
       name: me.first_name ? `${me.first_name} ${me.last_name}` : me.username || data?.full_name,
       role: 'Student',
+      rawRole: 'STUDENT',
       id: String(currentStudent.value?.student_id || me.username || '').slice(-2),
     }
     return data
@@ -217,6 +221,8 @@ export function usePortal() {
     needsCurrentPassword: computed(() => !heldPassword.value),
     currentUser: readonly(currentUser),
     currentStudent: readonly(currentStudent),
+    isAdmin: computed(() => currentUser.value?.rawRole === 'ADMIN'),
+    isLecturer: computed(() => currentUser.value?.rawRole === 'LECTURER'),
     setPortal,
     adminLogin,
     adminSignUp,

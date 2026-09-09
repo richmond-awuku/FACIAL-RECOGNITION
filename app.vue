@@ -29,9 +29,6 @@ const handleSignOut = () => {
   studentView.value = 'overview'
 }
 
-const switchPortal = () => {
-  setPortal(portal.value === 'admin' ? 'student' : 'admin')
-}
 </script>
 
 <template>
@@ -74,7 +71,7 @@ const switchPortal = () => {
       </AppSidebar>
 
       <main class="flex-1 min-w-0">
-        <AppTopbar @switch-portal="switchPortal" />
+        <AppTopbar />
 
         <div class="p-8 max-w-5xl mx-auto">
           <!-- Admin views -->

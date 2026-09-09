@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useApi } from '~/composables/useApi'
+import { usePortal } from '~/composables/usePortal'
 import type { Course, Student } from '~/types/database'
 
 const emit = defineEmits<{ notify: [message: string] }>()
 const api = useApi()
+const { isAdmin } = usePortal()
 
 const courses = ref<any[]>([])
 const students = ref<Student[]>([])
@@ -199,7 +201,7 @@ const fmtTime = (t: string) => (t ? String(t).slice(0, 5) : '')
           <button class="btn-outline" @click="toggleExpand(course)">
             {{ expandedId === course.id ? 'Close' : 'Manage' }}
           </button>
-          <button class="font-mono text-[11px] uppercase text-danger hover:underline" @click="handleDeleteCourse(course)">Delete</button>
+          <button v-if="isAdmin" class="font-mono text-[11px] uppercase text-danger hover:underline" @click="handleDeleteCourse(course)">Delete</button>
         </div>
 
         <!-- Manage panel -->
