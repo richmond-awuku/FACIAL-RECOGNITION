@@ -66,11 +66,21 @@ const departments = computed(() => {
 // Compute department-wise average attendance
 const deptData = computed(() => {
   const deptMap: Record<string, { total: number; count: number }> = {};
+
   for (const s of students.value) {
-    if (!deptMap[s.department]) deptMap[s.department] = { total: 0, count: 0 };
-    deptMap[s.department].total += Number(s.attendance_rate);
-    deptMap[s.department].count++;
+    const department = s.department || "Unknown";
+
+    if (!deptMap[department]) {
+      deptMap[department] = {
+        total: 0,
+        count: 0,
+      };
+    }
+
+    deptMap[department]!.total += Number(s.attendance_rate);
+    deptMap[department]!.count++;
   }
+
   return Object.entries(deptMap).map(([label, { total, count }]) => ({
     label: label.slice(0, 3).toUpperCase(),
     value: count > 0 ? Math.round(total / count) : 0,
@@ -102,20 +112,27 @@ const overallRate = computed(() => {
 
 // Build SVG path from trend data
 const trendPath = computed(() => {
-  if (trendData.value.length === 0) return "";
+  if (trendData.value.length < 2) return "";
+
   const max = 100;
-  const points = trendData.value.map((d, i) => {
-    const x = 24 + i * (576 / Math.max(trendData.value.length - 1, 1));
-    const y = 230 - (d.rate / max) * 180;
-    return { x, y };
-  });
-  if (points.length < 2) return "";
-  let path = `M${points[0].x} ${points[0].y}`;
+
+  const points = trendData.value.map((d, i) => ({
+    x: 24 + i * (576 / Math.max(trendData.value.length - 1, 1)),
+    y: 230 - (d.rate / max) * 180,
+  }));
+
+  let path = `M${points[0]!.x} ${points[0]!.y}`;
+
   for (let i = 1; i < points.length; i++) {
-    const cp1x = points[i - 1].x + (points[i].x - points[i - 1].x) / 2;
-    const cp1y = points[i - 1].y;
-    path += ` C${cp1x} ${cp1y} ${cp1x} ${points[i].y} ${points[i].x} ${points[i].y}`;
+    const prev = points[i - 1]!;
+    const curr = points[i]!;
+
+    const cp1x = prev.x + (curr.x - prev.x) / 2;
+    const cp1y = prev.y;
+
+    path += ` C${cp1x} ${cp1y} ${cp1x} ${curr.y} ${curr.x} ${curr.y}`;
   }
+
   return path;
 });
 

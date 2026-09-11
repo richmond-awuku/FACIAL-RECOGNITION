@@ -23,7 +23,7 @@ const error = ref("");
 // Add student modal
 const showAddForm = ref(false);
 const newStudent = ref({
-  student_id: "",
+  // student_id: "",
   full_name: "",
   email: "",
   department: "Computer Science",
@@ -111,7 +111,7 @@ async function handleAddStudent() {
   addingStudent.value = true;
   try {
     const created: any = await api.createStudent({
-      student_id: newStudent.value.student_id,
+      // student_id: newStudent.value.student_id,
       full_name: newStudent.value.full_name,
       email: newStudent.value.email,
       department: newStudent.value.department,
@@ -119,7 +119,7 @@ async function handleAddStudent() {
     await loadStudents();
     showAddForm.value = false;
     newStudent.value = {
-      student_id: "",
+      // student_id: "",
       full_name: "",
       email: "",
       department: "Computer Science",
@@ -311,7 +311,7 @@ async function handleDelete(student: Student) {
     >
       <template #default>
         <div class="text-left">
-          <label class="block font-mono text-[11px] tracking-wide mt-4">
+          <!-- <label class="block font-mono text-[11px] tracking-wide mt-4">
             STUDENT ID (OPTIONAL)
             <input
               v-model="newStudent.student_id"
@@ -319,7 +319,7 @@ async function handleDelete(student: Student) {
               class="input-field mt-2"
               placeholder="e.g. STU-8829-XR"
             />
-          </label>
+          </label> -->
           <label class="block font-mono text-[11px] tracking-wide mt-4">
             FULL NAME
             <input

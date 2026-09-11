@@ -119,11 +119,6 @@ function normStudent(s: any): any {
     last_seen: s.last_seen ?? null,
     attendance_rate: Number(s.attendance_rate ?? 0),
     created_at: s.created_at ?? null,
-    is_active: s.is_active ?? true,
-    guardian_phone: s.guardian_phone ?? "",
-    guardian_email: s.guardian_email ?? "",
-    enrollment_consent_given_at: s.enrollment_consent_given_at ?? null,
-    embeddings: s.embeddings ?? [],
   };
 }
 
@@ -164,9 +159,6 @@ function normSession(s: any): any {
     ended_at: s.ended_at ?? null,
     created_at: s.created_at ?? null,
     courses,
-    schedule_slot: s.schedule_slot ?? null,
-    scheduled_date: s.scheduled_date ?? null,
-    created_by: s.created_by ?? null,
   };
 }
 
@@ -227,8 +219,6 @@ function normReviewItem(r: any): any {
           })
         : undefined,
     created_at: r.created_at ?? null,
-    resolved_by: r.resolved_by ?? null,
-    resolved_at: r.resolved_at ?? null,
   };
 }
 
@@ -244,10 +234,6 @@ function normTicket(t: any): any {
     status: TICKET_STATUS[t.status] ?? t.status ?? "Open",
     created_at: t.created_at ?? null,
     updated_at: t.resolved_at ?? t.updated_at ?? t.created_at ?? null,
-    student_name: t.student_name ?? "",
-    student_id_number: t.student_id_number ?? "",
-    resolution_note: t.resolution_note ?? "",
-    resolved_by: t.resolved_by ?? null,
   };
 }
 
@@ -655,9 +641,7 @@ export function useApi() {
   }
 
   async function getSessionSummary(sessionId: string) {
-    return call(`/api/attendance/sessions/${sessionId}/summary/`, {
-      method: "POST",
-    });
+    return call(`/api/attendance/sessions/${sessionId}/summary/`);
   }
 
   // The backend computes session stats; nothing to write. Return the summary so
@@ -721,9 +705,6 @@ export function useApi() {
   }
 
   // ── Settings ────────────────────────────────────────────
-  async function getAllSettings() {
-    return asArray(await call("/api/settings/"));
-  }
   async function getSystemSetting<T = any>(key: string): Promise<T | null> {
     const row = await callSafe(`/api/settings/${encodeURIComponent(key)}/`);
     if (!row) return null;
@@ -741,18 +722,6 @@ export function useApi() {
     return call("/api/settings/", {
       method: "POST",
       body: { key, value: payload },
-    });
-  }
-  async function updateSetting(key: string, value: any) {
-    const payload = typeof value === "string" ? value : JSON.stringify(value);
-    return call(`/api/settings/${encodeURIComponent(key)}/`, {
-      method: "PUT",
-      body: { key, value: payload },
-    });
-  }
-  async function deleteSetting(key: string) {
-    return call(`/api/settings/${encodeURIComponent(key)}/`, {
-      method: "DELETE",
     });
   }
 
@@ -835,13 +804,15 @@ export function useApi() {
     return call("/api/dashboard/overview/");
   }
   async function getAttendanceTrends(months = 6) {
-    return asArray(await call("/api/analytics/trends/"));
+    return asArray(await call(`/api/analytics/trends/?months=${months}`));
   }
   async function getAttendanceByDepartment() {
     return asArray(await call("/api/analytics/by-department/"));
   }
   async function getAtRiskStudents(threshold = 15) {
-    return asArray(await call("/api/analytics/at-risk/"));
+    return asArray(
+      await call(`/api/analytics/at-risk/?threshold=${threshold}`),
+    );
   }
 
   // ── "Realtime" via polling ──────────────────────────────
@@ -959,11 +930,8 @@ export function useApi() {
     getReviewItems,
     updateSessionReviewItem,
     // settings
-    getAllSettings,
     getSystemSetting,
     saveSystemSetting,
-    updateSetting,
-    deleteSetting,
     getStudentSettings,
     saveStudentSettings,
     getMyStudentSettings,

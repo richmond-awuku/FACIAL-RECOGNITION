@@ -280,6 +280,11 @@ async function simulateScan() {
     return;
   }
   const student = unmarked[Math.floor(Math.random() * unmarked.length)];
+
+  if (!student) {
+    emit("notify", "No unmarked student found.");
+    return;
+  }
   const confidence = Math.round(88 + Math.random() * 12);
   try {
     await api.recordAttendance({
