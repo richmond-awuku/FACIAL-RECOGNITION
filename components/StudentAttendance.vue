@@ -234,29 +234,31 @@ const trendAreaPath = computed(() => {
           </div>
         </div>
 
-        <div class="table-head grid-cols-[1.4fr_2.2fr_1fr_0.9fr]">
-          <span>Date / Time</span><span>Course Name</span><span>Status</span
-          ><span>Rec. Confidence</span>
-        </div>
-
-        <div
-          v-for="row in filteredAttendance"
-          :key="row.id"
-          class="table-row grid-cols-[1.4fr_2.2fr_1fr_0.9fr] min-h-[53px] text-xs"
-        >
-          <span class="font-mono">{{ formatDate(row.check_in_time) }}</span>
-          <span class="truncate">{{
-            row.sessions?.courses?.course_name || "Unknown"
-          }}</span>
-          <b class="status-tag flex-shrink-0" :class="statusClass(row.status)"
-            >● {{ row.status }}</b
-          >
-          <span class="font-mono text-right">{{
-            row.confidence_score
-              ? Number(row.confidence_score).toFixed(1) + "%"
-              : "N/A"
-          }}</span>
-        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-[30%]">Date / Time</th>
+              <th class="w-[34%]">Course Name</th>
+              <th class="w-[18%]">Status</th>
+              <th class="w-[18%]">Rec. Confidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in filteredAttendance" :key="row.id">
+              <td class="font-mono text-[12px] text-[#334155]">{{ formatDate(row.check_in_time) }}</td>
+              <td class="text-[#1f2d3d]">{{ row.sessions?.courses?.course_name || "Unknown" }}</td>
+              <td>
+                <span class="inline-flex items-center gap-2 rounded border px-2 py-1 text-[10px] font-mono uppercase tracking-[0.08em]" :class="statusClass(row.status)">
+                  <span class="inline-block h-2 w-2 rounded-full" :class="row.status === 'Present' ? 'bg-[#2fb3d4]' : row.status === 'Absent' ? 'bg-[#ef4444]' : 'bg-[#94a3b8]'" />
+                  {{ row.status }}
+                </span>
+              </td>
+              <td class="font-mono text-[12px] text-[#334155] text-right">
+                {{ row.confidence_score ? Number(row.confidence_score).toFixed(1) + "%" : "N/A" }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         <p
           v-if="filteredAttendance.length === 0"

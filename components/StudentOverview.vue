@@ -183,23 +183,27 @@ async function submitOverride() {
           <div class="bg-gray-100 min-h-[46px] px-6 flex items-center">
             <h3 class="font-mono text-xs uppercase">▣ My Courses</h3>
           </div>
-          <div class="table-head grid-cols-[0.7fr_1.8fr_0.9fr]">
-            <span>Code</span><span>Course</span><span>Credits</span>
-          </div>
-          <div
-            v-for="course in courses"
-            :key="course.id"
-            class="table-row grid-cols-[0.7fr_1.8fr_0.9fr] min-h-[68px]"
-          >
-            <span class="font-mono">{{ course.course_code }}</span>
-            <strong
-              >{{ course.course_name
-              }}<small class="block text-gray-500 font-mono text-[11px] mt-1"
-                >{{ course.professor }} | {{ course.room }}</small
-              ></strong
-            >
-            <span>{{ course.credits }} CR</span>
-          </div>
+
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="w-[24%]">Code</th>
+                <th class="w-[52%]">Course</th>
+                <th class="w-[24%]">Credits</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="course in courses" :key="course.id">
+                <td class="font-mono text-[12px] text-[#334155]">{{ course.course_code }}</td>
+                <td>
+                  <div class="font-medium text-[#1f2d3d]">{{ course.course_name }}</div>
+                  <small class="block text-[11px] text-gray-500 font-mono mt-1">{{ course.professor }} | {{ course.room }}</small>
+                </td>
+                <td>{{ course.credits }} CR</td>
+              </tr>
+            </tbody>
+          </table>
+
           <p v-if="courses.length === 0" class="p-6 text-center text-gray-400">
             No courses enrolled.
           </p>
@@ -213,33 +217,30 @@ async function submitOverride() {
             </h3>
           </div>
 
-          <div class="table-head grid-cols-[1.2fr_1.5fr_0.8fr_0.9fr]">
-            <span>Time</span><span>Course</span><span>Status</span
-            ><span>Confidence</span>
-          </div>
-
-          <div
-            v-for="(scan, index) in recentAttendance"
-            :key="scan.id"
-            class="table-row grid-cols-[1.2fr_1.5fr_0.8fr_0.9fr] text-xs"
-          >
-            <small class="font-mono text-[10px] text-gray-500">{{
-              formatScanTime(scan.check_in_time, index)
-            }}</small>
-            <strong>{{
-              scan.sessions?.courses?.course_name || "Unknown Course"
-            }}</strong>
-            <em class="text-cyan font-mono text-[10px] not-italic">{{
-              scan.status === "Present"
-                ? "MATCH FOUND"
-                : scan.status.toUpperCase()
-            }}</em>
-            <span class="font-mono text-[11px]">{{
-              scan.confidence_score
-                ? Number(scan.confidence_score).toFixed(1) + "%"
-                : "N/A"
-            }}</span>
-          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th class="w-[28%]">Time</th>
+                <th class="w-[34%]">Course</th>
+                <th class="w-[18%]">Status</th>
+                <th class="w-[20%]">Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(scan, index) in recentAttendance" :key="scan.id">
+                <td class="font-mono text-[11px] text-[#64748b]">{{ formatScanTime(scan.check_in_time, index) }}</td>
+                <td class="font-medium text-[#1f2d3d]">{{ scan.sessions?.courses?.course_name || "Unknown Course" }}</td>
+                <td>
+                  <span class="inline-flex rounded bg-cyan-light/20 px-2 py-1 text-[10px] font-mono text-cyan-dark">
+                    {{ scan.status === "Present" ? "MATCH FOUND" : scan.status.toUpperCase() }}
+                  </span>
+                </td>
+                <td class="font-mono text-[11px] text-[#334155]">
+                  {{ scan.confidence_score ? Number(scan.confidence_score).toFixed(1) + "%" : "N/A" }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
           <p
             v-if="recentAttendance.length === 0"

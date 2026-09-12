@@ -195,108 +195,96 @@ async function handleDelete(student: Student) {
 </script>
 
 <template>
-  <section>
-    <div class="flex items-end justify-between gap-5 mb-6">
+  <section class="space-y-6">
+    <div class="flex items-end justify-between gap-5">
       <div>
-        <h1 class="text-3xl tracking-tight">Student Roster</h1>
-        <p class="mt-1.5 text-gray-500">
+        <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">Student Roster</h1>
+        <p class="mt-1.5 text-[15px] text-[#64748b]">
           Manage global enrollment, verify identities, and monitor facility
           access telemetry.
         </p>
       </div>
-      <button class="btn-dark" @click="showAddForm = true">
-        ♙ Add Student
+      <button class="inline-flex items-center gap-2 rounded-md bg-[#0d2337] px-4 py-3 text-[11px] font-mono uppercase tracking-[0.18em] text-white shadow-sm hover:bg-[#18304d]" @click="showAddForm = true">
+        <span>✚</span> Add Student
       </button>
     </div>
 
     <p v-if="loading" class="text-gray-500">Loading roster...</p>
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
 
-    <article v-if="!loading" class="card overflow-hidden">
-      <!-- Toolbar -->
-      <div
-        class="p-4 bg-gray-50 border-b border-line flex gap-2.5 items-center"
-      >
-        <div
-          class="h-9 border border-gray-300 rounded bg-white flex items-center gap-2.5 px-3 flex-1 max-w-[460px] text-gray-500"
-        >
+    <article v-if="!loading" class="panel-surface overflow-hidden">
+      <div class="flex items-center justify-between gap-4 border-b border-[#e5e7eb] bg-[#f8fafb] p-4">
+        <div class="flex w-[440px] items-center gap-3 rounded-md border border-[#dfe5eb] bg-white px-3 py-2.5 text-[#64748b] shadow-[0_1px_0_rgba(15,23,42,0.02)]">
           <span>⌕</span>
           <input
             v-model="searchQuery"
-            class="border-0 outline-none w-full text-ink"
+            class="w-full border-0 bg-transparent text-[14px] text-[#1f2d3d] placeholder:text-[#94a3b8] outline-none"
             placeholder="Filter by Name, ID, or Department..."
           />
         </div>
-        <select v-model="departmentFilter" class="btn-outline">
-          <option v-for="d in departments" :key="d" :value="d">{{ d }}</option>
-        </select>
-      </div>
 
-      <!-- Table head -->
-      <div class="table-head grid-cols-[2fr_1.2fr_1.5fr_1.3fr_1.4fr_auto]">
-        <span>Student Name</span><span>Student ID</span><span>Department</span
-        ><span>Enrollment Status</span><span>Last Seen</span><span>Action</span>
-      </div>
-
-      <!-- Rows -->
-      <div
-        v-for="student in filteredStudents"
-        :key="student.id"
-        class="table-row grid-cols-[2fr_1.2fr_1.5fr_1.3fr_1.4fr_auto] text-xs"
-      >
-        <span class="flex gap-3 items-center">
-          <span
-            class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-navy flex-shrink-0"
-          >
-            {{ initials(student.full_name) }}
-          </span>
-          <span class="truncate">{{ student.full_name }}</span>
-        </span>
-        <span class="font-mono">{{ student.student_id }}</span>
-        <span>{{ student.department }}</span>
-        <span>
-          <b class="status-tag" :class="statusClass(student.enrollment_status)"
-            >● {{ student.enrollment_status }}</b
-          >
-        </span>
-        <span class="font-mono text-gray-500">{{
-          formatDate(student.last_seen)
-        }}</span>
-        <div class="flex gap-2 flex-shrink-0">
-          <button
-            class="font-mono text-[11px] uppercase text-ink hover:text-cyan"
-            @click="viewStudent = student"
-          >
-            View
+        <div class="flex items-center gap-3">
+          <button class="inline-flex items-center gap-2 rounded-md border border-[#dfe5eb] bg-white px-3 py-2 text-[11px] font-mono uppercase tracking-[0.12em] text-[#475569] hover:bg-[#f8fafb]">
+            <span>⏷</span> Filter
           </button>
-          <button
-            v-if="student.enrollment_status !== 'Verified'"
-            class="font-mono text-[11px] uppercase text-cyan hover:underline"
-            @click="handleVerify(student)"
-          >
-            Verify
-          </button>
-          <button
-            v-if="isAdmin"
-            class="font-mono text-[11px] uppercase text-danger hover:underline"
-            @click="handleDelete(student)"
-          >
-            Del
+          <button class="inline-flex items-center gap-2 rounded-md border border-[#dfe5eb] bg-white px-3 py-2 text-[11px] font-mono uppercase tracking-[0.12em] text-[#475569] hover:bg-[#f8fafb]">
+            <span>⇩</span> Export CSV
           </button>
         </div>
       </div>
 
-      <p
-        v-if="filteredStudents.length === 0"
-        class="p-6 text-center text-gray-400"
-      >
-        No students found.
-      </p>
+      <table class="w-full border-collapse">
+        <thead>
+          <tr>
+            <th class="border-b border-[#e5e7eb] bg-[#f3f5f7] px-4 py-3 text-left text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">Student name</th>
+            <th class="border-b border-[#e5e7eb] bg-[#f3f5f7] px-4 py-3 text-left text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">Student ID</th>
+            <th class="border-b border-[#e5e7eb] bg-[#f3f5f7] px-4 py-3 text-left text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">Department</th>
+            <th class="border-b border-[#e5e7eb] bg-[#f3f5f7] px-4 py-3 text-left text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">Enrollment status</th>
+            <th class="border-b border-[#e5e7eb] bg-[#f3f5f7] px-4 py-3 text-left text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">Last seen</th>
+            <th class="border-b border-[#e5e7eb] bg-[#f3f5f7] px-4 py-3 text-left text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="student in filteredStudents" :key="student.id" class="border-b border-[#edf1f5] bg-white text-[#1f2d3d]">
+            <td class="px-4 py-4">
+              <div class="flex items-center gap-3">
+                <span class="flex h-9 w-9 items-center justify-center rounded-full border border-[#e5e7eb] bg-[#f2f6f8] text-[10px] font-bold text-[#1f2d3d]">
+                  {{ initials(student.full_name) }}
+                </span>
+                <span class="text-[15px] font-medium">{{ student.full_name }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-4 font-mono text-[13px] text-[#334155]">{{ student.student_id }}</td>
+            <td class="px-4 py-4 text-[14px] text-[#334155]">{{ student.department }}</td>
+            <td class="px-4 py-4">
+              <span class="inline-flex items-center gap-2 rounded border px-2.5 py-1 text-[11px] font-mono uppercase tracking-[0.08em]" :class="statusClass(student.enrollment_status)">
+                <span class="inline-block h-2 w-2 rounded-full" :class="student.enrollment_status === 'Verified' ? 'bg-[#2fb3d4]' : student.enrollment_status === 'Pending' ? 'bg-[#94a3b8]' : 'bg-[#f87171]'" />
+                {{ student.enrollment_status }}
+              </span>
+            </td>
+            <td class="px-4 py-4 font-mono text-[13px] text-[#64748b]">{{ formatDate(student.last_seen) }}</td>
+            <td class="px-4 py-4">
+              <div class="flex items-center gap-3">
+                <button class="text-[11px] font-mono uppercase text-[#334155] hover:text-[#2fb3d4]" @click="viewStudent = student">View</button>
+                <button v-if="student.enrollment_status !== 'Verified'" class="text-[11px] font-mono uppercase text-[#2fb3d4] hover:underline" @click="handleVerify(student)">Verify</button>
+                <button v-if="isAdmin" class="text-[11px] font-mono uppercase text-[#ef4444] hover:underline" @click="handleDelete(student)">Del</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      <!-- Footer -->
-      <div class="p-4 flex justify-between items-center text-gray-500">
-        Showing <b class="text-ink mx-1">{{ filteredStudents.length }}</b> of
-        {{ students.length }} entries
+      <p v-if="filteredStudents.length === 0" class="p-6 text-center text-gray-400">No students found.</p>
+
+      <div class="flex items-center justify-between border-t border-[#e5e7eb] bg-[#f8fafb] px-4 py-4 text-[14px] text-[#64748b]">
+        <span>Showing 1 to 5 of 2,492 entries</span>
+        <div class="flex items-center gap-2">
+          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b]">‹</button>
+          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#0d2337] bg-[#0d2337] text-white">1</button>
+          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b]">2</button>
+          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b]">3</button>
+          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b]">›</button>
+        </div>
       </div>
     </article>
 

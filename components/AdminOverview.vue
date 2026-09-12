@@ -71,18 +71,16 @@ const formatConfidence = (score: number | null) => {
 </script>
 
 <template>
-  <section>
-    <div class="flex items-end justify-between gap-5 mb-6">
+  <section class="space-y-6">
+    <div class="flex items-end justify-between gap-5">
       <div>
-        <h1 class="text-3xl tracking-tight leading-tight">Overview</h1>
-        <p class="mt-1.5 text-gray-500">
+        <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">Overview</h1>
+        <p class="mt-1.5 text-[#64748b] text-[15px]">
           System status and live metrics for today.
         </p>
       </div>
-      <span
-        class="font-mono text-[11px] text-gray-600 flex items-center gap-1.5"
-      >
-        <i class="w-2 h-2 bg-cyan rounded-full inline-block" /> SYSTEM ONLINE
+      <span class="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#4b5563]">
+        <i class="inline-block h-2.5 w-2.5 rounded-full bg-[#2fb3d4]" /> System online
       </span>
     </div>
 
@@ -90,107 +88,106 @@ const formatConfidence = (score: number | null) => {
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
 
     <template v-if="!loading">
-      <!-- Metric cards -->
-      <div class="grid grid-cols-3 gap-5 mb-6">
-        <article class="card p-6 min-h-[245px] flex flex-col justify-between">
-          <div class="font-mono text-xs flex justify-between">
-            Total Roster <span class="text-gray-400 text-lg">♙</span>
+      <div class="grid grid-cols-[1.1fr_1.1fr_1.1fr_1.35fr] gap-5">
+        <article class="overview-card">
+          <div class="flex items-start justify-between text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">
+            <span>Total roster</span>
+            <span class="text-lg text-[#94a3b8]">▣</span>
           </div>
-          <strong class="text-5xl tracking-tight">{{ totalRoster }}</strong>
-          <p class="text-sm text-gray-600">Enrolled across all sessions</p>
+          <div>
+            <div class="overview-stat">{{ totalRoster }}</div>
+            <p class="mt-2 text-[15px] text-[#64748b]">Enrolled across all sessions</p>
+          </div>
         </article>
 
-        <article class="card p-6 min-h-[245px] flex flex-col justify-between">
-          <div class="font-mono text-xs flex justify-between">
-            Today's Attendance <span class="text-cyan text-lg">⌁</span>
+        <article class="overview-card">
+          <div class="flex items-start justify-between text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">
+            <span>Today's attendance</span>
+            <span class="text-lg text-[#2fb3d4]">↗</span>
           </div>
-          <strong class="text-5xl tracking-tight"
-            >{{ todayAttendance
-            }}<em class="text-base not-italic ml-1.5">%</em></strong
-          >
-          <p class="text-sm text-cyan">Live recognition rate</p>
+          <div>
+            <div class="overview-stat flex items-end gap-2">
+              <span>{{ todayAttendance }}</span>
+              <span class="pb-2 text-[22px] text-[#64748b]">%</span>
+            </div>
+            <p class="mt-2 flex items-center gap-2 text-[15px] text-[#2fb3d4]">
+              <span class="text-base">↑</span> +2.4% vs last week
+            </p>
+          </div>
         </article>
 
-        <article class="card p-6 min-h-[245px] flex flex-col justify-between">
-          <div class="font-mono text-xs flex justify-between">
-            Active Sessions <span class="text-gray-400 text-lg">◌</span>
+        <article class="overview-card">
+          <div class="flex items-start justify-between text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">
+            <span>Active sessions</span>
+            <span class="text-lg text-[#94a3b8]">◌</span>
           </div>
-          <strong class="text-5xl tracking-tight">{{
-            String(activeCount).padStart(2, "0")
-          }}</strong>
-          <p class="text-sm text-gray-600">Currently scanning</p>
+          <div>
+            <div class="overview-stat">{{ String(activeCount).padStart(2, "0") }}</div>
+            <p class="mt-2 text-[15px] text-[#64748b]">Currently scanning</p>
+          </div>
         </article>
 
-        <article
-          class="bg-navy-light text-white p-6 rounded-lg min-h-[245px] flex flex-col justify-between relative overflow-hidden"
-        >
-          <small class="text-cyan font-mono">▣ Sentinel Engine</small>
-          <strong class="text-xl">Initialize Scanner</strong>
-          <p class="text-gray-300 leading-relaxed text-sm">
-            Connect to lecture hall camera feeds to begin attendance
-            verification.
-          </p>
-          <button
-            class="text-cyan border border-cyan bg-transparent py-2.5 rounded font-mono text-xs hover:bg-cyan/10 transition-colors"
-            @click="$emit('startSession')"
-          >
-            ϟ Connect Feed
-          </button>
+        <article class="col-span-1 rounded-[18px] bg-[#0e1f31] p-6 text-white shadow-inner shadow-[#0e1f31]">
+          <div class="mb-8 flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-[#88dff3]">
+            <span class="text-lg">▣</span>
+            <span>Sentinel Engine</span>
+          </div>
+          <div class="space-y-3">
+            <h3 class="text-[32px] font-semibold tracking-[-0.06em]">Initialize Scanner</h3>
+            <p class="text-[15px] leading-relaxed text-[#d7ebf4]">
+              Connect to lecture hall camera feeds to begin attendance verification.
+            </p>
+            <button
+              class="mt-4 inline-flex w-full items-center justify-center gap-2 border border-[#6dd5ee] bg-transparent px-4 py-3 text-[11px] font-mono uppercase tracking-[0.18em] text-[#6dd5ee] transition hover:bg-[#1a2e44]"
+              @click="$emit('startSession')"
+            >
+              <span>ϟ</span> Connect Feed
+            </button>
+          </div>
         </article>
       </div>
 
-      <!-- Recent Activity -->
-      <article class="card overflow-hidden">
-        <div
-          class="h-16 border-b border-line px-6 flex items-center justify-between"
-        >
-          <h2 class="text-xl">Recent Activity</h2>
-          <button class="text-ink hover:text-cyan" @click="$emit('viewLog')">
+      <article class="panel-surface overflow-hidden">
+        <div class="flex h-16 items-center justify-between border-b border-[#e5e7eb] px-6">
+          <h2 class="text-[31px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">Recent Activity</h2>
+          <button class="text-[14px] font-medium text-[#1f2d3d] hover:text-[#2fb3d4]" @click="$emit('viewLog')">
             View Log →
           </button>
         </div>
 
-        <div class="table-head grid-cols-[0.5fr_2.2fr_1.3fr_1.3fr_0.8fr]">
-          <span>Status</span><span>Student Profile</span><span>System ID</span
-          ><span>Timestamp</span><span>Confidence</span>
-        </div>
+        <table class="activity-table">
+          <thead>
+            <tr>
+              <th class="w-[11%]">Status</th>
+              <th class="w-[30%]">Student Profile</th>
+              <th class="w-[18%]">System ID</th>
+              <th class="w-[18%]">Timestamp</th>
+              <th class="w-[12%]">Confidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="record in recentRecords" :key="record.id" class="activity-row">
+              <td>
+                <span class="inline-block h-2.5 w-2.5 rounded-full" :class="record.status === 'Present' ? 'bg-[#2fb3d4]' : 'bg-[#94a3b8]'" />
+              </td>
+              <td>
+                <div class="flex items-center gap-3">
+                  <span class="avatar-pill">{{ initials(record.students?.full_name || "?") }}</span>
+                  <span class="text-[15px] font-medium text-[#1f2d3d]">{{ record.students?.full_name || "Unknown" }}</span>
+                </div>
+              </td>
+              <td class="font-mono text-[13px] text-[#334155]">{{ record.students?.student_id || "N/A" }}</td>
+              <td class="font-mono text-[13px] text-[#64748b]">{{ formatTime(record.check_in_time) }}</td>
+              <td>
+                <span class="inline-flex rounded border border-[#cbe6f1] bg-[#e9f8ff] px-2 py-1 text-[11px] font-mono text-[#1a6f8f]">
+                  {{ formatConfidence(record.confidence_score) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-        <div
-          v-for="(record, index) in recentRecords"
-          :key="record.id"
-          class="table-row grid-cols-[0.5fr_2.2fr_1.3fr_1.3fr_0.8fr] font-mono text-xs"
-        >
-          <span
-            class="w-2 h-2 rounded-full inline-block flex-shrink-0"
-            :class="record.status === 'Present' ? 'bg-cyan' : 'bg-gray-400'"
-          />
-          <span class="flex gap-3 items-center font-sans text-sm">
-            <span
-              class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-navy flex-shrink-0"
-            >
-              {{ initials(record.students?.full_name || "?") }}
-            </span>
-            <span class="truncate">{{
-              record.students?.full_name || "Unknown"
-            }}</span>
-          </span>
-          <span class="font-mono">{{
-            record.students?.student_id || "N/A"
-          }}</span>
-          <span class="font-mono text-gray-500">{{
-            formatTime(record.check_in_time)
-          }}</span>
-          <span
-            class="border border-cyan-light bg-cyan-light/20 text-cyan-dark rounded px-2 py-1 font-mono text-[11px] w-max flex-shrink-0"
-          >
-            {{ formatConfidence(record.confidence_score) }}
-          </span>
-        </div>
-
-        <p
-          v-if="recentRecords.length === 0"
-          class="p-6 text-center text-gray-400"
-        >
+        <p v-if="recentRecords.length === 0" class="p-6 text-center text-gray-400">
           No recent activity.
         </p>
       </article>

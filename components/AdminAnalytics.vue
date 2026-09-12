@@ -291,27 +291,32 @@ const trendAreaPath = computed(() => {
           </div>
         </div>
 
-        <div class="table-head grid-cols-[1.2fr_2fr_1.5fr_0.9fr_0.9fr]">
-          <span>Student ID</span><span>Name</span><span>Department</span
-          ><span>Attendance</span><span>Absenteeism</span>
-        </div>
-
-        <div
-          v-for="student in atRiskStudents"
-          :key="student.id"
-          class="table-row grid-cols-[1.2fr_2fr_1.5fr_0.9fr_0.9fr] text-sm"
-        >
-          <span class="font-mono">{{ student.student_id }}</span>
-          <strong class="truncate">{{ student.full_name }}</strong>
-          <span>{{ student.department }}</span>
-          <span class="font-mono"
-            >{{ Number(student.attendance_rate).toFixed(1) }}%</span
-          >
-          <b
-            class="bg-red-100 text-danger rounded px-2 py-1 w-max font-mono text-[11px] flex-shrink-0"
-            >{{ absenteeismRate(Number(student.attendance_rate)) }}</b
-          >
-        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="w-[18%]">Student ID</th>
+              <th class="w-[24%]">Name</th>
+              <th class="w-[24%]">Department</th>
+              <th class="w-[16%]">Attendance</th>
+              <th class="w-[18%]">Absenteeism</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="student in atRiskStudents" :key="student.id">
+              <td class="font-mono text-[13px] text-[#334155]">{{ student.student_id }}</td>
+              <td class="font-medium text-[#1f2d3d]">{{ student.full_name }}</td>
+              <td class="text-[#334155]">{{ student.department }}</td>
+              <td class="font-mono text-[13px] text-[#334155]">
+                {{ Number(student.attendance_rate).toFixed(1) }}%
+              </td>
+              <td>
+                <span class="inline-flex rounded bg-red-100 px-2.5 py-1 text-[11px] font-mono text-[#d92d47]">
+                  {{ absenteeismRate(Number(student.attendance_rate)) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         <p
           v-if="atRiskStudents.length === 0"

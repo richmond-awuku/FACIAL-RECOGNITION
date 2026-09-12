@@ -134,32 +134,35 @@ async function submitTicket() {
       </p>
     </div>
     <div v-else class="card overflow-hidden">
-      <div class="table-head grid-cols-[1.2fr_1fr_2fr_auto]">
-        <span>Category</span><span>Reference</span><span>Description</span
-        ><span>Status</span>
-      </div>
-      <div
-        v-for="t in tickets"
-        :key="t.id"
-        class="table-row grid-cols-[1.2fr_1fr_2fr_auto]"
-      >
-        <span class="font-medium">{{ t.category }}</span>
-        <span class="text-gray-500 font-mono">{{
-          t.reference_id || "General"
-        }}</span>
-        <span class="text-gray-600 truncate">{{ t.description }}</span>
-        <span
-          :class="[
-            'status-tag flex-shrink-0',
-            t.status === 'Resolved' || t.status === 'Closed'
-              ? 'status-verified'
-              : t.status === 'In Review'
-                ? 'status-pending'
-                : 'status-flagged',
-          ]"
-          >{{ t.status }}</span
-        >
-      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="w-[18%]">Category</th>
+            <th class="w-[18%]">Reference</th>
+            <th class="w-[46%]">Description</th>
+            <th class="w-[18%]">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="t in tickets" :key="t.id">
+            <td class="font-medium text-[#1f2d3d]">{{ t.category }}</td>
+            <td class="text-gray-500 font-mono text-[12px]">{{ t.reference_id || "General" }}</td>
+            <td class="text-gray-600">{{ t.description }}</td>
+            <td>
+              <span
+                :class="[
+                  'inline-flex rounded border px-2.5 py-1 text-[11px] font-mono uppercase tracking-[0.08em]',
+                  t.status === 'Resolved' || t.status === 'Closed'
+                    ? 'border-cyan-light bg-cyan-light/20 text-cyan-dark'
+                    : t.status === 'In Review'
+                      ? 'border-gray-300 bg-gray-100 text-gray-600'
+                      : 'border-red-300 bg-red-50 text-danger',
+                ]"
+              >{{ t.status }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="card p-6">

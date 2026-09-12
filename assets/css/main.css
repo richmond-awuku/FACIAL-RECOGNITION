@@ -30,6 +30,18 @@
   .table-row {
     @apply border-t border-line text-ink grid items-center min-h-[52px] px-4 gap-4;
   }
+  .data-table {
+    @apply w-full border-collapse;
+  }
+  .data-table thead th {
+    @apply border-b border-[#e5e7eb] bg-[#f3f5f7] px-4 py-3 text-left text-[11px] font-mono uppercase tracking-[0.15em] text-[#64748b];
+  }
+  .data-table tbody td {
+    @apply border-b border-[#edf1f5] px-4 py-4 align-middle text-[14px] text-[#1f2d3d];
+  }
+  .data-table tbody tr {
+    @apply bg-white;
+  }
   .status-tag {
     @apply border rounded px-2 py-1 font-mono text-[11px] w-max;
   }
@@ -44,5 +56,38 @@
   }
   .input-field {
     @apply w-full h-11 border border-gray-300 rounded-md px-4 bg-white text-ink outline-none transition-colors focus:border-cyan focus:ring-2 focus:ring-cyan/20;
+  }
+  .panel-surface {
+    @apply bg-white border border-[#dfe5eb] rounded-xl shadow-[0_1px_0_rgba(15,23,42,0.04)];
+  }
+  .overview-card {
+    @apply panel-surface min-h-[190px] p-6 flex flex-col justify-between;
+  }
+  .overview-stat {
+    @apply text-[58px] font-semibold tracking-[-0.08em] leading-none text-[#1f2d3d];
+  }
+  .overview-muted {
+    @apply text-[#64748b] text-sm;
+  }
+  .mini-pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-[#dfe8f3] bg-[#f8fbff] px-2 py-1 text-[11px] font-mono text-[#3a5e7d];
+  }
+  .activity-table {
+    @apply w-full border-collapse overflow-hidden;
+  }
+  .activity-table thead th {
+    @apply border-b border-[#dfe5eb] bg-[#f3f5f7] px-4 py-3 text-left text-[11px] font-mono uppercase tracking-[0.14em] text-[#6b7280];
+  }
+  .activity-table tbody td {
+    @apply border-b border-[#edf1f5] px-4 py-3 align-middle text-[13px] text-[#1f2d3d];
+  }
+  .activity-row td {
+    @apply bg-white;
+  }
+  .avatar-pill {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#dfe5eb] bg-[#eef3f7] text-[10px] font-bold text-[#1f2d3d];
+  }
+  .table-action-btn {
+    @apply inline-flex items-center justify-center rounded border border-[#dfe5eb] bg-[#f9fafb] px-2.5 py-1 text-[11px] font-mono uppercase tracking-[0.08em] text-[#334155];
   }
 }
