@@ -14,6 +14,16 @@ const { portal, currentUser, isLecturer, logout } = usePortal()
 
 const adminNav = [
   { id: 'overview', label: 'Overview', icon: '▦' },
+  { id: 'user-management', label: 'User Management', icon: '♙' },
+  { id: 'class-management', label: 'Class Management', icon: '❏' },
+  { id: 'roster', label: 'Student Roster', icon: '♙' },
+  { id: 'analytics', label: 'Analytics', icon: '⌁' },
+  { id: 'logs', label: 'Logs', icon: '▤' },
+  { id: 'reports', label: 'Reports', icon: '▥' },
+]
+
+const lecturerNav = [
+  { id: 'overview', label: 'Overview', icon: '▦' },
   { id: 'sessions', label: 'Sessions', icon: '▣' },
   { id: 'courses', label: 'Courses', icon: '❏' },
   { id: 'roster', label: 'Student Roster', icon: '♙' },
@@ -27,7 +37,10 @@ const studentNav = [
   { id: 'support', label: 'Support', icon: '✦' },
 ]
 
-const navItems = computed(() => portal.value === 'admin' ? adminNav : studentNav)
+const navItems = computed(() => {
+  if (portal.value === 'student') return studentNav
+  return isLecturer.value ? lecturerNav : adminNav
+})
 
 const handleNav = (id: string) => emit('navigate', id)
 const handleSignOut = () => {

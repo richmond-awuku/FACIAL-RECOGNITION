@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { usePortal } from '~/composables/usePortal'
 
-const { portal, isAuthed, authReady, mustChangePassword, logout, setPortal } = usePortal()
+const { portal, isAuthed, authReady, mustChangePassword, isAdmin, logout, setPortal } = usePortal()
 
 const adminView = ref('overview')
 const studentView = ref('overview')
@@ -75,18 +75,31 @@ const handleSignOut = () => {
 
         <div class="p-8 max-w-5xl mx-auto">
           <!-- Admin views -->
+          <AdminSystemOverview
+            v-if="portal === 'admin' && isAdmin && adminView === 'overview'"
+            @navigate="handleAdminNav"
+          />
           <AdminOverview
-            v-if="portal === 'admin' && adminView === 'overview'"
-            @start-session="handleAdminNav('sessions')"
-            @view-log="handleAdminNav('sessions')"
+            v-else-if="portal === 'admin' && !isAdmin && adminView === 'overview'"
+            @start-session="handleAdminNav(isAdmin ? 'class-management' : 'sessions')"
+            @view-log="handleAdminNav(isAdmin ? 'logs' : 'sessions')"
           />
           <AdminSessions
-            v-else-if="portal === 'admin' && adminView === 'sessions'"
+          v-else-if="portal === 'admin' && !isAdmin && adminView === 'sessions'"
             @notify="notify"
             @view-roster="handleAdminNav('roster')"
           />
+          <AdminLogs
+            v-else-if="portal === 'admin' && isAdmin && adminView === 'logs'"
+          />
+          <UserManagement
+            v-else-if="portal === 'admin' && isAdmin && adminView === 'user-management'"
+          />
+          <ClassManagement
+            v-else-if="portal === 'admin' && isAdmin && adminView === 'class-management'"
+          />
           <AdminCourses
-            v-else-if="portal === 'admin' && adminView === 'courses'"
+            v-else-if="portal === 'admin' && !isAdmin && adminView === 'courses'"
             @notify="notify"
           />
           <AdminRoster
@@ -96,6 +109,9 @@ const handleSignOut = () => {
           <AdminAnalytics
             v-else-if="portal === 'admin' && adminView === 'analytics'"
             @notify="notify"
+          />
+          <Reports
+            v-else-if="portal === 'admin' && isAdmin && adminView === 'reports'"
           />
           <AdminSettings
             v-else-if="portal === 'admin' && adminView === 'settings'"
