@@ -5,7 +5,7 @@ import { useCamera } from '~/composables/useCamera'
 import { usePortal } from '~/composables/usePortal'
 
 const emit = defineEmits<{ notify: [message: string] }>()
-const { currentStudent, refreshCurrentStudent } = usePortal()
+const { currentStudent, refreshCurrentStudent, refreshCurrentUser } = usePortal()
 const api = useApi()
 const cam = useCamera()
 
@@ -13,6 +13,8 @@ const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
 const settings = reactive({ attendance_notifications: true, security_alerts: true, campus_announcements: false, two_factor_enabled: false })
+const photoInput = ref<HTMLInputElement | null>(null)
+const uploadingPhoto = ref(false)
 
 // ── Password change ──────────────────────────────────────
 const oldPassword = ref('')
@@ -52,6 +54,27 @@ async function saveSettings() {
     error.value = err instanceof Error ? err.message : 'Unable to save your settings.'
   } finally {
     saving.value = false
+  }
+
+  async function uploadPhoto(event: Event) {
+    const file = (event.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      error.value = 'Choose an image file.'
+      return
+    }
+    uploadingPhoto.value = true
+    error.value = ''
+    try {
+      await api.uploadProfilePhoto(file)
+      await Promise.all([refreshCurrentStudent(), refreshCurrentUser()])
+      emit('notify', 'Profile photo updated.')
+    } catch (err: any) {
+      error.value = err?.message || 'Unable to upload profile photo.'
+    } finally {
+      uploadingPhoto.value = false
+      if (photoInput.value) photoInput.value.value = ''
+    }
   }
 }
 
@@ -164,6 +187,16 @@ async function runCapture() {
     <div v-if="loading" class="card p-8 text-gray-500">Loading account settings...</div>
     <div v-else class="grid lg:grid-cols-2 gap-6">
       <div class="space-y-6">
+        <div class="card p-6">
+          <h2 class="text-xl font-semibold border-b border-line pb-4">Profile Photo</h2>
+          <div class="mt-5 flex items-center gap-4">
+            <div class="h-16 w-16 overflow-hidden rounded-full bg-cyan-light flex items-center justify-center font-bold text-navy">
+              <img v-if="currentStudent?.avatarUrl" :src="currentStudent.avatarUrl" alt="" class="h-full w-full object-cover" />
+              <span v-else>{{ currentStudent?.full_name?.slice(0, 2).toUpperCase() }}</span>
+            </div>
+            <div><p class="text-sm text-gray-600">Upload a normal profile photo. This is separate from your biometric face reference.</p><label class="btn-outline mt-3 inline-flex cursor-pointer">{{ uploadingPhoto ? 'Uploading...' : 'Choose photo' }}<input ref="photoInput" type="file" accept="image/*" class="hidden" :disabled="uploadingPhoto" @change="uploadPhoto" /></label></div>
+          </div>
+        </div>
         <div class="card p-6">
           <h2 class="text-xl font-semibold border-b border-line pb-4">Biometric Profile</h2>
           <p class="text-sm text-gray-600 mt-5">Keep your reference profile up to date for accurate campus access and attendance logging.</p>

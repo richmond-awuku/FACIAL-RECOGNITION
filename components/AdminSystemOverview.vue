@@ -1,41 +1,58 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useApi } from '~/composables/useApi'
 
 const emit = defineEmits<{ navigate: [view: string] }>()
 
-const attendance = ref([
-  { day: 'Aug 31', value: 580 },
-  { day: 'Sep 1', value: 760 },
-  { day: 'Sep 2', value: 650 },
-  { day: 'Sep 3', value: 730 },
-  { day: 'Sep 4', value: 900 },
-  { day: 'Sep 5', value: 840 },
-  { day: 'Sep 6', value: 1026 },
-])
+const api = useApi()
+const dashboard = ref<any>({})
+const attendance = ref<any[]>([])
+const activity = ref<any[]>([])
+const systems = ref<any[]>([])
+const loading = ref(true)
+const error = ref('')
 
-const activity = ref([
-  { icon: '♙', title: 'New student registered', detail: 'Emmanuel Mensah (STU-8921-A)', time: '10:12 AM', tone: 'bg-cyan-light/30 text-cyan-dark' },
-  { icon: '❏', title: 'Class created', detail: 'Web Development (CS-201)', time: '09:45 AM', tone: 'bg-green-100 text-success' },
-  { icon: '✓', title: 'Attendance submitted', detail: 'By Dr. Sarah Jenkins (CS-201)', time: '09:32 AM', tone: 'bg-blue-100 text-blue-600' },
-  { icon: '♙', title: 'New lecturer added', detail: 'Dr. Michael Chen', time: '08:50 AM', tone: 'bg-green-100 text-success' },
-  { icon: '⚙', title: 'System settings updated', detail: 'Attendance threshold changed', time: '08:20 AM', tone: 'bg-orange-100 text-orange-500' },
-])
+onMounted(async () => {
+  try {
+    const [overview, trends, logs] = await Promise.all([
+      api.getDashboardOverview(),
+      api.getAttendanceTrends(1),
+      api.getAuditLogs(),
+    ])
+    dashboard.value = overview || {}
+    attendance.value = trends.map((point: any) => ({
+      day: point.day || point.date || point.label || '',
+      value: Number(point.value ?? point.count ?? point.present ?? 0),
+    }))
+    activity.value = logs.slice(0, 5).map((log: any) => ({
+      icon: '•',
+      title: log.action || log.event || log.message || 'Activity recorded',
+      detail: log.user_name || log.username || log.module || 'System',
+      time: log.created_at || log.timestamp
+        ? new Date(log.created_at || log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : 'Unknown',
+      tone: 'bg-cyan-light/30 text-cyan-dark',
+    }))
+    systems.value = Array.isArray(overview?.systems) ? overview.systems : []
+  } catch (e: any) {
+    error.value = e?.message || 'Unable to load the admin overview.'
+  } finally {
+    loading.value = false
+  }
+})
 
-const systems = [
-  { name: 'Database', state: 'Online' },
-  { name: 'Web Server', state: 'Running' },
-  { name: 'Face Recognition', state: 'Active' },
-  { name: 'Notification Service', state: 'Operational' },
-]
+const metric = (key: string, fallback = '—') => dashboard.value?.[key] ?? dashboard.value?.metrics?.[key] ?? fallback
 
 const chartPoints = computed(() => attendance.value.map((point, index) => ({
   ...point,
-  x: 28 + index * (560 / (attendance.value.length - 1)),
-  y: 208 - (point.value / 1250) * 150,
+  x: attendance.value.length > 1 ? 28 + index * (560 / (attendance.value.length - 1)) : 308,
+  y: 208 - (point.value / Math.max(...attendance.value.map((item) => item.value), 1)) * 150,
 })))
 
 const chartPath = computed(() => chartPoints.value.map((point, index) => `${index ? 'L' : 'M'}${point.x} ${point.y}`).join(' '))
 const chartArea = computed(() => `${chartPath.value} L588 208 L28 208 Z`)
+const updatedAt = computed(() => dashboard.value?.updated_at || dashboard.value?.last_updated || 'Unavailable')
+const attendanceSummary = computed(() => dashboard.value?.attendance_today_summary || dashboard.value?.attendance_summary || {})
 </script>
 
 <template>
@@ -47,16 +64,18 @@ const chartArea = computed(() => `${chartPath.value} L588 208 L28 208 Z`)
       </div>
       <div class="text-right text-xs text-gray-500">
         <span class="flex items-center justify-end gap-2 font-medium text-[#1f2d3d]"><i class="h-2 w-2 rounded-full bg-success" /> System Online</span>
-        <span class="mt-2 block">Last updated: Sep 6, 2025 10:24 AM</span>
+        <span class="mt-2 block">Last updated: {{ updatedAt }}</span>
       </div>
     </div>
+    <p v-if="loading" class="text-sm text-gray-500">Loading overview...</p>
+    <p v-else-if="error" class="text-sm text-danger">{{ error }}</p>
 
     <div class="grid grid-cols-4 gap-5">
       <article v-for="card in [
-        { label: 'Total Users', value: '1,248', detail: 'Students + Lecturers + Admins', change: '12%', tone: 'border-blue-200 bg-blue-50/20' },
-        { label: 'Total Classes', value: '48', detail: 'All registered classes', change: '8%', tone: 'border-green-200 bg-green-50/20' },
-        { label: 'Total Attendance Today', value: '1,026', detail: 'Across all classes', change: '14%', tone: 'border-purple-200 bg-purple-50/20' },
-        { label: 'System Uptime', value: '99.8%', detail: 'Last 7 days', change: '0.2%', tone: 'border-orange-200 bg-orange-50/20' },
+        { label: 'Total Users', value: metric('total_users'), detail: 'Students + Lecturers + Admins', change: metric('users_change'), tone: 'border-blue-200 bg-blue-50/20' },
+        { label: 'Total Classes', value: metric('total_classes'), detail: 'All registered classes', change: metric('classes_change'), tone: 'border-green-200 bg-green-50/20' },
+        { label: 'Total Attendance Today', value: metric('attendance_today'), detail: 'Across all classes', change: metric('attendance_change'), tone: 'border-purple-200 bg-purple-50/20' },
+        { label: 'System Uptime', value: metric('system_uptime'), detail: 'Last 7 days', change: metric('uptime_change'), tone: 'border-orange-200 bg-orange-50/20' },
       ]" :key="card.label" class="overview-card min-h-[145px] border" :class="card.tone">
         <span class="font-mono text-xs text-[#64748b]">{{ card.label }}</span>
         <strong class="overview-stat text-4xl">{{ card.value }}</strong>
@@ -89,9 +108,9 @@ const chartArea = computed(() => `${chartPath.value} L588 208 L28 208 Z`)
           </svg>
           <div class="flex justify-between font-mono text-[10px] text-gray-500"><span v-for="point in attendance" :key="point.day">{{ point.day }}</span></div>
           <div class="mt-5 grid grid-cols-3 border-t border-line pt-4 text-sm">
-            <div><span class="text-success">● Present</span><strong class="mt-1 block text-lg">1,026</strong><small class="text-gray-500">87.4%</small></div>
-            <div class="border-l border-line pl-4"><span class="text-danger">● Absent</span><strong class="mt-1 block text-lg">132</strong><small class="text-gray-500">11.3%</small></div>
-            <div class="border-l border-line pl-4"><span class="text-warning">● Late</span><strong class="mt-1 block text-lg">34</strong><small class="text-gray-500">2.9%</small></div>
+            <div><span class="text-success">● Present</span><strong class="mt-1 block text-lg">{{ attendanceSummary.present ?? '—' }}</strong><small class="text-gray-500">{{ attendanceSummary.present_rate ?? '—' }}</small></div>
+            <div class="border-l border-line pl-4"><span class="text-danger">● Absent</span><strong class="mt-1 block text-lg">{{ attendanceSummary.absent ?? '—' }}</strong><small class="text-gray-500">{{ attendanceSummary.absent_rate ?? '—' }}</small></div>
+            <div class="border-l border-line pl-4"><span class="text-warning">● Late</span><strong class="mt-1 block text-lg">{{ attendanceSummary.late ?? '—' }}</strong><small class="text-gray-500">{{ attendanceSummary.late_rate ?? '—' }}</small></div>
           </div>
         </div>
       </article>
@@ -109,7 +128,8 @@ const chartArea = computed(() => `${chartPath.value} L588 208 L28 208 Z`)
     <article class="panel-surface p-5">
       <div class="mb-4 flex items-center justify-between"><h2 class="text-lg font-semibold">▤ System Status</h2><button class="text-sm text-cyan-dark">View Details →</button></div>
       <div class="grid grid-cols-4 gap-4">
-        <div v-for="system in systems" :key="system.name" class="flex items-center gap-3 rounded-lg border border-green-100 bg-green-50/50 p-3"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white">✓</span><span><strong class="block text-xs">{{ system.name }}</strong><small class="text-xs text-success">{{ system.state }}</small></span></div>
+        <div v-for="system in systems" :key="system.name" class="flex items-center gap-3 rounded-lg border border-green-100 bg-green-50/50 p-3"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-success text-white">✓</span><span><strong class="block text-xs">{{ system.name }}</strong><small class="text-xs text-success">{{ system.state || system.status }}</small></span></div>
+        <p v-if="!systems.length" class="col-span-4 text-sm text-gray-500">System health details are not available from the backend.</p>
       </div>
     </article>
   </section>

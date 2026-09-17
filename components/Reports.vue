@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useApi } from '~/composables/useApi'
 
 const activeTab = ref('Attendance Reports')
 const reportTypes = [
@@ -8,20 +9,46 @@ const reportTypes = [
   { name: 'Class Attendance', type: 'Class-wise attendance', color: 'text-success' },
   { name: 'Custom Report', type: 'Filter and download', color: 'text-purple-500' },
 ]
-const recentReports = ref([
-  { id: 1, name: 'Attendance Summary', type: 'Attendance', date: 'Sep 6, 2025 10:34 AM', status: 'Completed' },
-  { id: 2, name: 'CS-201 Class Report', type: 'Class', date: 'Sep 6, 2025 06:15 AM', status: 'Completed' },
-  { id: 3, name: 'Student Attendance (Michael Chen)', type: 'Student', date: 'Sep 5, 2025 04:31 PM', status: 'Completed' },
-  { id: 4, name: 'System Activity Log', type: 'System', date: 'Sep 5, 2025 02:10 PM', status: 'Completed' },
-])
+const recentReports = ref<any[]>([])
+const loading = ref(true)
+const error = ref('')
+const attendanceRows = ref<any[]>([])
+
+onMounted(async () => {
+  try {
+    const api = useApi()
+    attendanceRows.value = await api.getAttendanceRecords()
+  } catch (e: any) {
+    error.value = e?.message || 'Unable to load report data.'
+  } finally {
+    loading.value = false
+  }
+})
+
 const generate = (name: string) => {
-  recentReports.value.unshift({ id: Date.now(), name, type: 'Generated', date: new Date().toLocaleString(), status: 'Completed' })
+  recentReports.value.unshift({ id: Date.now(), name, type: 'Attendance', date: new Date().toLocaleString(), status: 'Generated' })
+}
+
+const exportAttendance = () => {
+  const headers = ['id', 'student_id', 'session_id', 'status', 'confidence_score', 'check_in_time']
+  const csv = [headers, ...attendanceRows.value.map((row) => headers.map((header) => row[header] ?? ''))]
+    .map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))
+    .join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'attendance-report.csv'
+  link.click()
+  URL.revokeObjectURL(url)
 }
 </script>
 
 <template>
   <section class="space-y-6">
-    <div class="flex items-end justify-between"><div><h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">Reports</h1><p class="mt-1.5 text-[15px] text-[#64748b]">View and download attendance, academic and system reports.</p></div><div class="flex gap-2"><button class="btn-outline">Sep 1, 2025 - Sep 6, 2025</button><button class="btn-primary">⇩ Export</button></div></div>
+    <div class="flex items-end justify-between"><div><h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">Reports</h1><p class="mt-1.5 text-[15px] text-[#64748b]">View and download attendance, academic and system reports.</p></div><div class="flex gap-2"><button class="btn-outline">Attendance records: {{ attendanceRows.length }}</button><button class="btn-primary" :disabled="loading || !!error" @click="exportAttendance">⇩ Export</button></div></div>
+    <p v-if="loading" class="text-sm text-gray-500">Loading report data...</p>
+    <p v-else-if="error" class="text-sm text-danger">{{ error }}</p>
     <div class="flex gap-8 border-b border-line"><button v-for="tab in ['Attendance Reports', 'User Reports', 'Class Reports', 'System Reports']" :key="tab" class="border-b-2 px-1 pb-3 text-sm font-medium" :class="activeTab === tab ? 'border-cyan text-cyan-dark' : 'border-transparent text-gray-500'" @click="activeTab = tab">{{ tab }}</button></div>
     <div class="grid grid-cols-4 gap-5">
       <article v-for="report in reportTypes" :key="report.name" class="panel-surface p-5"><div :class="report.color" class="mb-5 text-2xl">▧</div><h2 class="font-semibold">{{ report.name }}</h2><p class="mt-1 text-sm text-gray-500">{{ report.type }}</p><button class="btn-outline mt-5 w-full" @click="generate(report.name)">Generate Report</button></article>

@@ -354,6 +354,11 @@ export function useApi() {
   async function getMe() {
     return call("/api/auth/me/");
   }
+  async function uploadProfilePhoto(file: File) {
+    const body = new FormData();
+    body.append("profile_image", file, file.name);
+    return call("/api/auth/me/", { method: "PATCH", body });
+  }
   async function createUser(payload: any) {
     return call("/api/auth/users/", { method: "POST", body: payload });
   }
@@ -882,6 +887,7 @@ export function useApi() {
     refreshToken,
     logout,
     getMe,
+    uploadProfilePhoto,
     createUser,
     changePassword,
     // students

@@ -22,12 +22,14 @@ onMounted(async () => {
     return
   }
   try {
-    const [courseData, attData] = await Promise.all([
+    const [courseData, attData, scheduleData] = await Promise.all([
       api.getStudentCourses(currentStudent.value.id),
       api.getAttendanceByStudent(currentStudent.value.id),
+      api.getMySchedule(),
     ])
     courses.value = courseData
     attendance.value = attData
+    schedule.value = scheduleData
   } catch (e: any) {
     error.value = e.message
   } finally {
@@ -54,15 +56,22 @@ const courseRate = computed(() => {
 
 const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 const timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '14:00', '16:00']
+const schedule = ref<any[]>([])
 
-// Assign courses to pseudo-time-slots for the calendar display
 const courseBlocks = computed(() => {
-  return courses.value.map((c, i) => ({
-    course: c,
-    day: i % 5,
-    slot: i % 7,
-    rate: courseRate.value[c.id] || 0,
-  }))
+  return schedule.value.map((item: any) => {
+    const course = courses.value.find((c) => String(c.id) === String(item.course || item.course_id))
+      || courses.value.find((c) => c.course_code === item.course_code)
+    const day = Math.max(0, Math.min(4, Number(item.day_of_week ?? item.day ?? 1) - 1))
+    const hour = Number(String(item.start_time || '08:00').slice(0, 2))
+    return {
+      course: course || { id: item.course || item.course_id, course_code: item.course_code || 'Course', course_name: item.course_name || '' },
+      day,
+      slot: Math.max(0, timeSlots.findIndex((time) => Number(time.slice(0, 2)) >= hour)),
+      rate: course ? courseRate.value[course.id] || 0 : 0,
+      room: item.room,
+    }
+  })
 })
 </script>
 
@@ -79,7 +88,7 @@ const courseBlocks = computed(() => {
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
 
     <template v-if="!loading">
-      <div class="grid grid-cols-[1.7fr_0.85fr] gap-7">
+      <div class="grid grid-cols-[1.7fr_0.85fr] gap-7 max-lg:grid-cols-1">
         <!-- Calendar -->
         <article class="card overflow-hidden min-h-[670px] relative">
           <div class="grid grid-cols-[90px_repeat(5,1fr)] min-h-[70px] bg-gray-100 border-b border-line text-center font-mono text-xs pt-4">
@@ -102,11 +111,12 @@ const courseBlocks = computed(() => {
           <div
             v-for="block in courseBlocks"
             :key="block.course.id"
-            class="absolute p-2.5 border border-gray-300 bg-gray-100 rounded w-[93px] h-[57px] font-mono text-xs"
+            class="absolute p-2.5 border border-gray-300 bg-gray-100 rounded w-[93px] h-[57px] font-mono text-xs max-md:static max-md:mb-2 max-md:w-full"
             :style="{ left: 107 + block.day * 108 + 'px', top: 70 + block.slot * 64 + 'px' }"
           >
             <strong>{{ block.course.course_code }}</strong>
             <span class="block truncate">{{ block.course.course_name }}</span>
+            <small v-if="block.room" class="block truncate">{{ block.room }}</small>
             <b v-if="block.rate > 0" class="text-cyan text-[10px] block mt-0.5">◉ {{ block.rate }}%</b>
           </div>
         </article>
