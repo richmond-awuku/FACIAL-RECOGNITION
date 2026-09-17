@@ -28,7 +28,7 @@ type CameraNode = {
 
 const emit = defineEmits<{ notify: [message: string] }>();
 const api = useApi();
-const { isAdmin, adminSignUp, currentUser, refreshCurrentUser } = usePortal();
+const { isAdmin, adminSignUp } = usePortal();
 const loading = ref(true);
 const saving = ref(false);
 const error = ref("");
@@ -51,8 +51,6 @@ const biometrics = reactive<Biometrics>({
   telemetry_sharing: false,
 });
 const nodes = ref<CameraNode[]>([]);
-const photoInput = ref<HTMLInputElement | null>(null);
-const uploadingPhoto = ref(false);
 
 // ── Password change ──────────────────────────────────────
 const oldPassword = ref("");
@@ -94,27 +92,6 @@ function addNode() {
     status: "online",
     firmware: "v2.1.0",
   });
-}
-
-async function uploadPhoto(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  if (!file.type.startsWith("image/")) {
-    error.value = "Choose an image file.";
-    return;
-  }
-  uploadingPhoto.value = true;
-  error.value = "";
-  try {
-    await api.uploadProfilePhoto(file);
-    await refreshCurrentUser();
-    emit("notify", "Profile photo updated.");
-  } catch (err: any) {
-    error.value = err?.message || "Unable to upload profile photo.";
-  } finally {
-    uploadingPhoto.value = false;
-    if (photoInput.value) photoInput.value.value = "";
-  }
 }
 
 // ── Staff accounts (admin only) ──────────────────────────
@@ -234,13 +211,6 @@ async function saveSettings() {
           <h2 class="text-xl font-semibold border-b border-line pb-4">
             Personal Information
           </h2>
-          <div class="mt-5 flex items-center gap-4">
-            <div class="h-16 w-16 overflow-hidden rounded-full bg-cyan-light flex items-center justify-center font-bold text-navy">
-              <img v-if="currentUser?.avatarUrl" :src="currentUser.avatarUrl" alt="" class="h-full w-full object-cover" />
-              <span v-else>{{ currentUser?.name?.slice(0, 2).toUpperCase() }}</span>
-            </div>
-            <div><p class="text-sm text-gray-600">Upload your profile photo. This does not replace biometric enrollment.</p><label class="btn-outline mt-3 inline-flex cursor-pointer">{{ uploadingPhoto ? "Uploading..." : "Choose photo" }}<input ref="photoInput" type="file" accept="image/*" class="hidden" :disabled="uploadingPhoto" @change="uploadPhoto" /></label></div>
-          </div>
           <label class="block mt-5 text-xs font-mono uppercase text-gray-500"
             >Full name<input
               v-model="profile.full_name"

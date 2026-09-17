@@ -73,7 +73,7 @@ const handleSignOut = () => {
       <main class="flex-1 min-w-0">
         <AppTopbar />
 
-        <div class="p-8 max-w-5xl mx-auto max-md:p-4">
+        <div class="p-8 max-w-5xl mx-auto">
           <!-- Admin views -->
           <AdminSystemOverview
             v-if="portal === 'admin' && isAdmin && adminView === 'overview'"

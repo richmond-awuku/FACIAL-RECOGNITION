@@ -198,11 +198,10 @@ async function handleDelete(student: Student) {
   <section class="space-y-6">
     <div class="flex items-end justify-between gap-5">
       <div>
-        <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">{{ isAdmin ? 'Student Roster' : 'My Student Roster' }}</h1>
+        <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">Student Roster</h1>
         <p class="mt-1.5 text-[15px] text-[#64748b]">
-          {{ isAdmin
-            ? 'Manage global enrollment, verify identities, and monitor facility access telemetry.'
-            : 'Students enrolled in the courses assigned to you. Course access is controlled by the backend.' }}
+          Manage global enrollment, verify identities, and monitor facility
+          access telemetry.
         </p>
       </div>
       <button class="inline-flex items-center gap-2 rounded-md bg-[#0d2337] px-4 py-3 text-[11px] font-mono uppercase tracking-[0.18em] text-white shadow-sm hover:bg-[#18304d]" @click="showAddForm = true">
