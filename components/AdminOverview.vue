@@ -13,28 +13,27 @@ const api = useApi();
 const students = ref<Student[]>([]);
 const activeSessions = ref<(Session & { courses: any })[]>([]);
 const recentRecords = ref<(AttendanceRecord & { students: Student })[]>([]);
+const todayCheckIns = ref(0);
 const loading = ref(true);
 const error = ref("");
 
 const totalRoster = computed(() => students.value.length);
 const activeCount = computed(() => activeSessions.value.length);
 
-const todayAttendance = computed(() => {
-  if (recentRecords.value.length === 0) return 0;
-  const present = recentRecords.value.filter(
-    (r) => r.status === "Present",
-  ).length;
-  return Math.round((present / Math.max(recentRecords.value.length, 1)) * 100);
-});
-
 onMounted(async () => {
   try {
-    const [studentData, sessionData] = await Promise.all([
+    const [studentData, sessionData, attendanceRecords] = await Promise.all([
       api.getStudents(),
       api.getActiveSessions(),
+      api.getAttendanceRecords(),
     ]);
     students.value = studentData;
     activeSessions.value = sessionData;
+    const today = new Date().toLocaleDateString();
+    todayCheckIns.value = attendanceRecords.filter((record) => {
+      const timestamp = record.check_in_time || record.created_at;
+      return timestamp && new Date(timestamp).toLocaleDateString() === today;
+    }).length;
 
     if (sessionData.length > 0) {
       const records = await api.getAttendanceBySession(sessionData[0].id);
@@ -79,8 +78,8 @@ const formatConfidence = (score: number | null) => {
           System status and live metrics for today.
         </p>
       </div>
-      <span class="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[#4b5563]">
-        <i class="inline-block h-2.5 w-2.5 rounded-full bg-[#2fb3d4]" /> System online
+      <span class="font-mono text-[11px] uppercase tracking-[0.18em] text-[#4b5563]">
+        {{ loading ? 'Loading live data' : error ? 'Live data unavailable' : 'Live data loaded' }}
       </span>
     </div>
 
@@ -88,7 +87,7 @@ const formatConfidence = (score: number | null) => {
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
 
     <template v-if="!loading">
-      <div class="grid grid-cols-[1.1fr_1.1fr_1.1fr_1.35fr] gap-5">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-[1.1fr_1.1fr_1.1fr_1.35fr] xl:gap-5">
         <article class="overview-card">
           <div class="flex items-start justify-between text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">
             <span>Total roster</span>
@@ -102,17 +101,14 @@ const formatConfidence = (score: number | null) => {
 
         <article class="overview-card">
           <div class="flex items-start justify-between text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">
-            <span>Today's attendance</span>
+            <span>Today's check-ins</span>
             <span class="text-lg text-[#2fb3d4]">↗</span>
           </div>
           <div>
             <div class="overview-stat flex items-end gap-2">
-              <span>{{ todayAttendance }}</span>
-              <span class="pb-2 text-[22px] text-[#64748b]">%</span>
+              <span>{{ todayCheckIns }}</span>
             </div>
-            <p class="mt-2 flex items-center gap-2 text-[15px] text-[#2fb3d4]">
-              <span class="text-base">↑</span> +2.4% vs last week
-            </p>
+            <p class="mt-2 text-[15px] text-[#64748b]">Attendance records returned today</p>
           </div>
         </article>
 
@@ -155,7 +151,8 @@ const formatConfidence = (score: number | null) => {
           </button>
         </div>
 
-        <table class="activity-table">
+        <div class="overflow-x-auto">
+        <table class="activity-table min-w-[680px]">
           <thead>
             <tr>
               <th class="w-[11%]">Status</th>
@@ -186,6 +183,7 @@ const formatConfidence = (score: number | null) => {
             </tr>
           </tbody>
         </table>
+        </div>
 
         <p v-if="recentRecords.length === 0" class="p-6 text-center text-gray-400">
           No recent activity.

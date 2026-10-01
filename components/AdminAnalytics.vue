@@ -18,7 +18,6 @@ const allRecords = ref<
   })[]
 >([]);
 const searchQuery = ref("");
-const dateRange = ref("Last 30 Days");
 const departmentFilter = ref("All Departments");
 const loading = ref(true);
 const error = ref("");
@@ -40,7 +39,7 @@ onMounted(async () => {
   }
 });
 
-const atRiskStudents = computed(() => {
+const allAtRiskStudents = computed(() => {
   return students.value
     .filter((s) => Number(s.attendance_rate) < 70)
     .filter(
@@ -52,9 +51,9 @@ const atRiskStudents = computed(() => {
       (s) =>
         !searchQuery.value ||
         s.student_id.toLowerCase().includes(searchQuery.value.toLowerCase()),
-    )
-    .slice(0, 10);
+    );
 });
+const atRiskStudents = computed(() => allAtRiskStudents.value.slice(0, 10));
 
 const absenteeismRate = (rate: number) => `${(100 - Number(rate)).toFixed(1)}%`;
 
@@ -87,38 +86,32 @@ const deptData = computed(() => {
   }));
 });
 
-// Compute monthly trend from attendance records
+// Attendance records are check-ins, so show counts rather than an unsupported rate.
 const trendData = computed(() => {
-  const months: Record<string, { present: number; total: number }> = {};
+  const months: Record<string, number> = {};
   for (const r of allRecords.value) {
+    if (!r.check_in_time) continue;
     const month = new Date(r.check_in_time).toLocaleDateString("en-US", {
       month: "short",
+      year: "numeric",
     });
-    if (!months[month]) months[month] = { present: 0, total: 0 };
-    months[month].total++;
-    if (r.status === "Present") months[month].present++;
+    months[month] = (months[month] || 0) + 1;
   }
-  return Object.entries(months).map(([month, { present, total }]) => ({
+  return Object.entries(months).map(([month, count]) => ({
     month,
-    rate: total > 0 ? Math.round((present / total) * 100) : 0,
+    count,
   }));
-});
-
-const overallRate = computed(() => {
-  if (allRecords.value.length === 0) return 0;
-  const present = allRecords.value.filter((r) => r.status === "Present").length;
-  return Math.round((present / allRecords.value.length) * 100);
 });
 
 // Build SVG path from trend data
 const trendPath = computed(() => {
   if (trendData.value.length < 2) return "";
 
-  const max = 100;
+  const max = Math.max(...trendData.value.map((item) => item.count), 1);
 
   const points = trendData.value.map((d, i) => ({
     x: 24 + i * (576 / Math.max(trendData.value.length - 1, 1)),
-    y: 230 - (d.rate / max) * 180,
+    y: 230 - (d.count / max) * 180,
   }));
 
   let path = `M${points[0]!.x} ${points[0]!.y}`;
@@ -171,12 +164,12 @@ const trendAreaPath = computed(() => {
 
     <template v-if="!loading">
       <!-- Summary metric -->
-      <div class="grid grid-cols-3 gap-5 mb-6">
+      <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
         <article class="card p-6 flex flex-col justify-between min-h-[120px]">
           <small class="font-mono text-xs text-gray-500"
-            >OVERALL ATTENDANCE</small
+            >ATTENDANCE CHECK-INS</small
           >
-          <strong class="text-4xl">{{ overallRate }}%</strong>
+          <strong class="text-4xl">{{ allRecords.length }}</strong>
         </article>
         <article class="card p-6 flex flex-col justify-between min-h-[120px]">
           <small class="font-mono text-xs text-gray-500">TOTAL SESSIONS</small>
@@ -187,19 +180,19 @@ const trendAreaPath = computed(() => {
             >AT-RISK STUDENTS</small
           >
           <strong class="text-4xl text-danger">{{
-            atRiskStudents.length
+            allAtRiskStudents.length
           }}</strong>
         </article>
       </div>
 
       <!-- Charts -->
-      <div class="grid grid-cols-[1.7fr_0.85fr] gap-6 mb-6">
+      <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.7fr_0.85fr]">
         <!-- Trend chart -->
         <article class="card p-6 h-[377px]">
           <div class="flex justify-between items-center">
             <h2 class="text-xl">Attendance Trends</h2>
             <span class="bg-gray-100 px-2 py-1 font-mono text-[11px]"
-              >BY MONTH</span
+              >CHECK-INS BY MONTH</span
             >
           </div>
           <div class="h-[280px] relative pt-6 pb-6 pl-9">

@@ -1,31 +1,100 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useApi } from '~/composables/useApi'
 
-const activeTab = ref('Attendance Reports')
-const reportTypes = [
-  { name: 'Attendance Summary', type: 'Overall attendance statistics', color: 'text-cyan' },
-  { name: 'Student Attendance', type: 'Individual student records', color: 'text-cyan' },
-  { name: 'Class Attendance', type: 'Class-wise attendance', color: 'text-success' },
-  { name: 'Custom Report', type: 'Filter and download', color: 'text-purple-500' },
+type ReportDataset = 'attendance' | 'users' | 'classes' | 'logs'
+type ReportDefinition = { name: string; description: string; dataset: ReportDataset }
+
+const api = useApi()
+const definitions: ReportDefinition[] = [
+  { name: 'Attendance Summary', description: 'Attendance records from the backend', dataset: 'attendance' },
+  { name: 'Student Attendance', description: 'Student-level attendance records', dataset: 'attendance' },
+  { name: 'Class Attendance', description: 'Course and session attendance records', dataset: 'attendance' },
+  { name: 'User Directory', description: 'User records returned by the backend', dataset: 'users' },
+  { name: 'Class Directory', description: 'Course records returned by the backend', dataset: 'classes' },
+  { name: 'System Activity', description: 'Audit events returned by the backend', dataset: 'logs' },
 ]
-const recentReports = ref([
-  { id: 1, name: 'Attendance Summary', type: 'Attendance', date: 'Sep 6, 2025 10:34 AM', status: 'Completed' },
-  { id: 2, name: 'CS-201 Class Report', type: 'Class', date: 'Sep 6, 2025 06:15 AM', status: 'Completed' },
-  { id: 3, name: 'Student Attendance (Michael Chen)', type: 'Student', date: 'Sep 5, 2025 04:31 PM', status: 'Completed' },
-  { id: 4, name: 'System Activity Log', type: 'System', date: 'Sep 5, 2025 02:10 PM', status: 'Completed' },
-])
-const generate = (name: string) => {
-  recentReports.value.unshift({ id: Date.now(), name, type: 'Generated', date: new Date().toLocaleString(), status: 'Completed' })
+const datasets = ref<Record<ReportDataset, any[]>>({ attendance: [], users: [], classes: [], logs: [] })
+const loading = ref(true)
+const error = ref('')
+const exporting = ref('')
+const loadedAt = ref('')
+
+onMounted(async () => {
+  try {
+    const [attendance, users, classes, logs] = await Promise.all([
+      api.getAttendanceRecords(),
+      api.getUsers(),
+      api.getCourses(),
+      api.getAuditLogs(),
+    ])
+    datasets.value = { attendance, users, classes, logs }
+    loadedAt.value = new Date().toLocaleString()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Unable to load report data.'
+  } finally {
+    loading.value = false
+  }
+})
+
+function csvCell(value: unknown) {
+  const text = value == null ? '' : String(value)
+  return `"${text.replaceAll('"', '""')}"`
+}
+
+function exportReport(report: ReportDefinition) {
+  exporting.value = report.name
+  try {
+    const rows = datasets.value[report.dataset]
+    if (!rows.length) {
+      error.value = `No ${report.dataset} data is available to export.`
+      return
+    }
+    const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))]
+    const csv = [
+      columns.map(csvCell).join(','),
+      ...rows.map((row) => columns.map((column) => csvCell(row[column])).join(',')),
+    ].join('\r\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${report.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    error.value = ''
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Unable to export report data.'
+  } finally {
+    exporting.value = ''
+  }
 }
 </script>
 
 <template>
   <section class="space-y-6">
-    <div class="flex items-end justify-between"><div><h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">Reports</h1><p class="mt-1.5 text-[15px] text-[#64748b]">View and download attendance, academic and system reports.</p></div><div class="flex gap-2"><button class="btn-outline">Sep 1, 2025 - Sep 6, 2025</button><button class="btn-primary">⇩ Export</button></div></div>
-    <div class="flex gap-8 border-b border-line"><button v-for="tab in ['Attendance Reports', 'User Reports', 'Class Reports', 'System Reports']" :key="tab" class="border-b-2 px-1 pb-3 text-sm font-medium" :class="activeTab === tab ? 'border-cyan text-cyan-dark' : 'border-transparent text-gray-500'" @click="activeTab = tab">{{ tab }}</button></div>
-    <div class="grid grid-cols-4 gap-5">
-      <article v-for="report in reportTypes" :key="report.name" class="panel-surface p-5"><div :class="report.color" class="mb-5 text-2xl">▧</div><h2 class="font-semibold">{{ report.name }}</h2><p class="mt-1 text-sm text-gray-500">{{ report.type }}</p><button class="btn-outline mt-5 w-full" @click="generate(report.name)">Generate Report</button></article>
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">Reports</h1>
+        <p class="mt-1.5 text-[15px] text-[#64748b]">Export current records fetched from the backend.</p>
+      </div>
+      <span v-if="loadedAt" class="text-xs text-gray-500">Data loaded {{ loadedAt }}</span>
     </div>
-    <article class="panel-surface overflow-hidden"><div class="border-b border-line px-6 py-5"><h2 class="text-xl font-semibold">Recent Reports</h2></div><table class="data-table"><thead><tr><th>Report Name</th><th>Type</th><th>Date Generated</th><th>Status</th><th>Actions</th></tr></thead><tbody><tr v-for="report in recentReports" :key="report.id"><td class="font-medium">{{ report.name }}</td><td>{{ report.type }}</td><td class="font-mono text-xs text-gray-500">{{ report.date }}</td><td><span class="status-tag status-verified">{{ report.status }}</span></td><td><button class="table-action-btn">⇩</button></td></tr></tbody></table></article>
+    <p v-if="loading" class="text-sm text-gray-500">Loading report data...</p>
+    <p v-if="error" role="alert" class="text-sm text-danger">{{ error }}</p>
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <article v-for="report in definitions" :key="report.name" class="panel-surface p-5">
+        <div class="mb-5 text-2xl text-cyan">▧</div>
+        <h2 class="font-semibold">{{ report.name }}</h2>
+        <p class="mt-1 text-sm text-gray-500">{{ report.description }}</p>
+        <p class="mt-3 text-xs text-gray-500">{{ datasets[report.dataset].length }} records loaded</p>
+        <button class="btn-outline mt-5 w-full" :disabled="loading || !!exporting" @click="exportReport(report)">
+          {{ exporting === report.name ? 'Preparing...' : 'Download CSV' }}
+        </button>
+      </article>
+    </div>
+    <article class="panel-surface p-5">
+      <h2 class="text-lg font-semibold">Report history</h2>
+      <p class="mt-2 text-sm text-gray-500">Report downloads are generated in this browser from live API data. Persisted report jobs and download history are not available in the current backend contract.</p>
+    </article>
   </section>
 </template>

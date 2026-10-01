@@ -132,6 +132,8 @@ function normCourse(c: any): any {
     credits: c.credits ?? 0,
     professor:
       c.professor ?? (c.lecturer != null ? `Lecturer #${c.lecturer}` : ""),
+    department: c.department ?? "",
+    semester: c.semester ?? "",
     room: c.room ?? c.schedule_slots?.[0]?.room ?? "TBD",
     created_at: c.created_at ?? null,
   };
@@ -357,6 +359,20 @@ export function useApi() {
   async function createUser(payload: any) {
     return call("/api/auth/users/", { method: "POST", body: payload });
   }
+  async function getUsers(params: {
+    search?: string;
+    role?: string;
+    is_active?: boolean | "";
+  } = {}) {
+    const query = new URLSearchParams();
+    if (params.search?.trim()) query.set("search", params.search.trim());
+    if (params.role) query.set("role", params.role);
+    if (params.is_active !== "" && params.is_active !== undefined)
+      query.set("is_active", String(params.is_active));
+    const queryString = query.toString();
+    const suffix = queryString ? `?${queryString}` : "";
+    return asArray(await call(`/api/auth/users/${suffix}`));
+  }
   async function changePassword(oldPassword: string, newPassword: string) {
     return call("/api/auth/change-password/", {
       method: "POST",
@@ -449,9 +465,23 @@ export function useApi() {
   }
 
   // ── Courses ─────────────────────────────────────────────
-  async function getCourses() {
-    return asArray(await call("/api/classes/courses/")).map(normCourse);
+  async function getCourses(params: {
+    search?: string;
+    department?: string;
+    semester?: string;
+    lecturer?: string;
+  } = {}) {
+    const query = new URLSearchParams();
+    if (params.search?.trim()) query.set("search", params.search.trim());
+    if (params.department) query.set("department", params.department);
+    if (params.semester) query.set("semester", params.semester);
+    if (params.lecturer) query.set("lecturer", params.lecturer);
+    const queryString = query.toString();
+    return asArray(
+      await call(`/api/classes/courses/${queryString ? `?${queryString}` : ""}`),
+    ).map(normCourse);
   }
+
   async function getCourse(id: string) {
     return normCourse(await call(`/api/classes/courses/${id}/`));
   }
@@ -462,6 +492,8 @@ export function useApi() {
       name: payload.name ?? payload.course_name,
       credits: payload.credits ?? 3,
     };
+    if (payload.department != null) body.department = payload.department;
+    if (payload.semester != null) body.semester = payload.semester;
     if (payload.lecturer != null && payload.lecturer !== "")
       body.lecturer = Number(payload.lecturer);
     if (Array.isArray(payload.students)) body.students = payload.students;
@@ -476,6 +508,8 @@ export function useApi() {
     if (updates.name ?? updates.course_name)
       body.name = updates.name ?? updates.course_name;
     if (updates.credits != null) body.credits = updates.credits;
+    if (updates.department !== undefined) body.department = updates.department;
+    if (updates.semester !== undefined) body.semester = updates.semester;
     if (updates.lecturer !== undefined)
       body.lecturer =
         updates.lecturer === "" || updates.lecturer == null
@@ -496,6 +530,25 @@ export function useApi() {
     studentIds: Array<string | number>,
   ) {
     return updateCourse(id, { students: studentIds.map((n) => Number(n)) });
+  }
+
+  async function searchCourseStudents(courseId: string | number, search: string) {
+    const query = search.trim()
+      ? `?search=${encodeURIComponent(search.trim())}`
+      : "";
+    return asArray(
+      await call(`/api/classes/courses/${courseId}/students/${query}`),
+    ).map(normStudent);
+  }
+
+  async function addCourseStudents(
+    courseId: string | number,
+    studentIds: Array<string | number>,
+  ) {
+    return call(`/api/classes/courses/${courseId}/students/`, {
+      method: "POST",
+      body: { student_ids: studentIds },
+    });
   }
 
   // ── Schedule slots ──────────────────────────────────────
@@ -647,11 +700,7 @@ export function useApi() {
   // The backend computes session stats; nothing to write. Return the summary so
   // callers that await this still get useful data.
   async function updateSessionStats(sessionId: string) {
-    try {
-      return await getSessionSummary(sessionId);
-    } catch {
-      return null;
-    }
+    return getSessionSummary(sessionId);
   }
 
   async function scanClassroom(sessionId: string, formData: FormData) {
@@ -883,6 +932,7 @@ export function useApi() {
     logout,
     getMe,
     createUser,
+    getUsers,
     changePassword,
     // students
     getStudents,
@@ -902,6 +952,8 @@ export function useApi() {
     updateCourse,
     deleteCourse,
     setCourseStudents,
+    searchCourseStudents,
+    addCourseStudents,
     getStudentCourses,
     // schedule slots
     getScheduleSlots,

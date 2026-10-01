@@ -1,84 +1,177 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useApi } from '~/composables/useApi'
 
 type UserRow = {
-  id: number
+  id: string | number
   name: string
+  username: string
   email: string
-  role: 'Student' | 'Lecturer' | 'Administrator'
+  role: string
   department: string
   status: 'Active' | 'Inactive'
   lastLogin: string
 }
 
+const api = useApi()
 const query = ref('')
-const roleFilter = ref('All Roles')
-const statusFilter = ref('All Statuses')
-const users = ref<UserRow[]>([
-  { id: 1, name: 'Emmanuel Mensah', email: 'emmanuel@school.edu', role: 'Student', department: 'Computer Science', status: 'Active', lastLogin: 'Sep 6, 2025 10:24 AM' },
-  { id: 2, name: 'Michael Chen', email: 'michael@school.edu', role: 'Student', department: 'Computer Science', status: 'Active', lastLogin: 'Sep 6, 2025 09:47 AM' },
-  { id: 3, name: 'Elena Rodriguez', email: 'elena@school.edu', role: 'Student', department: 'Electrical Eng.', status: 'Active', lastLogin: 'Sep 6, 2025 07:12 AM' },
-  { id: 4, name: 'David Kim', email: 'david@school.edu', role: 'Student', department: 'Mechanical Eng.', status: 'Active', lastLogin: 'Sep 5, 2025 04:32 PM' },
-  { id: 5, name: 'Aisha Patel', email: 'aisha@school.edu', role: 'Lecturer', department: 'Computer Science', status: 'Active', lastLogin: 'Sep 5, 2025 02:16 PM' },
-  { id: 6, name: 'Sarah Jenkins', email: 'sarah@school.edu', role: 'Lecturer', department: 'Electrical Eng.', status: 'Active', lastLogin: 'Sep 5, 2025 11:03 AM' },
-  { id: 7, name: 'Admin User', email: 'admin@school.edu', role: 'Administrator', department: 'IT Department', status: 'Active', lastLogin: 'Sep 4, 2025 08:41 AM' },
-])
+const roleFilter = ref('')
+const statusFilter = ref('')
+const users = ref<UserRow[]>([])
+const loading = ref(true)
+const error = ref('')
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+let requestSequence = 0
 
-const filteredUsers = computed(() => users.value.filter((user) => {
-  const needle = query.value.toLowerCase()
-  return (!needle || `${user.name} ${user.email} ${user.department}`.toLowerCase().includes(needle))
-    && (roleFilter.value === 'All Roles' || user.role === roleFilter.value)
-    && (statusFilter.value === 'All Statuses' || user.status === statusFilter.value)
+const showAddUser = ref(false)
+const addingUser = ref(false)
+const addUserError = ref('')
+const newUser = ref({ fullName: '', email: '', role: 'LECTURER', department: '' })
+
+function mapUser(user: any): UserRow {
+  const rawRole = String(user.role || user.user_role || '').toUpperCase()
+  return {
+    id: user.id,
+    name: user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || 'Unnamed user',
+    username: user.username || '',
+    email: user.email || '',
+    role: rawRole === 'ADMIN' ? 'Administrator' : rawRole === 'LECTURER' ? 'Lecturer' : rawRole === 'STUDENT' ? 'Student' : rawRole || 'Unknown',
+    department: user.department || user.student?.department || '',
+    status: user.is_active === false ? 'Inactive' : 'Active',
+    lastLogin: user.last_login ? new Date(user.last_login).toLocaleString() : 'Never',
+  }
+}
+
+async function loadUsers() {
+  const sequence = ++requestSequence
+  loading.value = true
+  error.value = ''
+  try {
+    const rows = await api.getUsers({
+      search: query.value,
+      role: roleFilter.value,
+      is_active: statusFilter.value === '' ? '' : statusFilter.value === 'Active',
+    })
+    if (sequence === requestSequence) users.value = rows.map(mapUser)
+  } catch (e: any) {
+    if (sequence === requestSequence) error.value = e?.message || 'Unable to load users.'
+  } finally {
+    if (sequence === requestSequence) loading.value = false
+  }
+}
+
+onMounted(loadUsers)
+watch([query, roleFilter, statusFilter], () => {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(loadUsers, query.value.trim() ? 300 : 0)
+})
+
+const roleCounts = computed(() => ({
+  Student: users.value.filter((user) => user.role === 'Student').length,
+  Lecturer: users.value.filter((user) => user.role === 'Lecturer').length,
+  Administrator: users.value.filter((user) => user.role === 'Administrator').length,
 }))
-
 const initials = (name: string) => name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()
+
+async function addUser() {
+  addUserError.value = ''
+  if (!newUser.value.fullName.trim() || !newUser.value.email.trim()) {
+    addUserError.value = 'Full name and email are required.'
+    return
+  }
+  addingUser.value = true
+  try {
+    const parts = newUser.value.fullName.trim().split(/\s+/)
+    await api.createUser({
+      username: newUser.value.email.trim(),
+      email: newUser.value.email.trim(),
+      first_name: parts.shift() || '',
+      last_name: parts.join(' '),
+      role: newUser.value.role,
+      department: newUser.value.department.trim() || undefined,
+    })
+    showAddUser.value = false
+    newUser.value = { fullName: '', email: '', role: 'LECTURER', department: '' }
+    await loadUsers()
+  } catch (e: any) {
+    addUserError.value = e?.payload?.detail || e?.message || 'Unable to create user.'
+  } finally {
+    addingUser.value = false
+  }
+}
 </script>
 
 <template>
   <section class="space-y-6">
-    <div class="flex items-end justify-between">
+    <div class="flex items-end justify-between gap-5 max-md:flex-col max-md:items-start">
       <div>
         <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">User Management</h1>
         <p class="mt-1.5 text-[15px] text-[#64748b]">Manage students, lecturers and administrators.</p>
       </div>
-      <button class="btn-primary">＋ Add User</button>
+      <button class="btn-primary" @click="showAddUser = true">＋ Add User</button>
     </div>
 
-    <div class="grid grid-cols-4 gap-5">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <article v-for="stat in [
-        { label: 'Total Users', value: '1,248', color: 'text-cyan' },
-        { label: 'Students', value: '1,020', color: 'text-cyan' },
-        { label: 'Lecturers', value: '182', color: 'text-danger' },
-        { label: 'Administrators', value: '46', color: 'text-purple-500' },
+        { label: 'Total Users', value: users.length, color: 'text-cyan' },
+        { label: 'Students', value: roleCounts.Student, color: 'text-cyan' },
+        { label: 'Lecturers', value: roleCounts.Lecturer, color: 'text-danger' },
+        { label: 'Administrators', value: roleCounts.Administrator, color: 'text-purple-500' },
       ]" :key="stat.label" class="overview-card min-h-[120px]">
         <span class="font-mono text-xs text-gray-500">{{ stat.label }}</span>
         <strong class="overview-stat text-4xl">{{ stat.value }}</strong>
-        <span :class="stat.color" class="text-xs">↑ 10% <span class="text-gray-400">vs last month</span></span>
       </article>
     </div>
 
-    <article class="panel-surface overflow-hidden">
-      <div class="flex items-center gap-3 border-b border-[#e5e7eb] bg-[#f8fafb] p-4">
-        <input v-model="query" class="input-field max-w-[440px]" placeholder="Search users..." />
-        <select v-model="roleFilter" class="btn-outline"><option>All Roles</option><option>Student</option><option>Lecturer</option><option>Administrator</option></select>
-        <select v-model="statusFilter" class="btn-outline"><option>All Statuses</option><option>Active</option><option>Inactive</option></select>
-        <button class="btn-outline">⚑ Filter</button>
+    <article class="panel-surface overflow-x-auto">
+      <div class="flex flex-wrap items-center gap-3 border-b border-[#e5e7eb] bg-[#f8fafb] p-4">
+        <input v-model="query" class="input-field min-w-[220px] max-w-[440px] flex-1" placeholder="Search name, username, or email..." />
+        <select v-model="roleFilter" class="btn-outline">
+          <option value="">All Roles</option><option value="STUDENT">Student</option><option value="LECTURER">Lecturer</option><option value="ADMIN">Administrator</option>
+        </select>
+        <select v-model="statusFilter" class="btn-outline">
+          <option value="">All Statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option>
+        </select>
       </div>
-      <table class="data-table">
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
-        <tbody>
-          <tr v-for="user in filteredUsers" :key="user.id">
-            <td><div class="flex items-center gap-3"><span class="avatar-pill">{{ initials(user.name) }}</span><strong>{{ user.name }}</strong></div></td>
-            <td class="text-gray-500">{{ user.email }}</td>
-            <td><span class="mini-pill">{{ user.role }}</span></td>
-            <td>{{ user.department }}</td>
-            <td><span class="status-tag status-verified">{{ user.status }}</span></td>
-            <td class="font-mono text-xs text-gray-500">{{ user.lastLogin }}</td>
-            <td><button class="table-action-btn">•••</button></td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="border-t border-line bg-surface px-4 py-4 text-sm text-gray-500">Showing {{ filteredUsers.length }} of {{ users.length }} users</div>
+      <p v-if="loading" class="p-6 text-sm text-gray-500">Loading users...</p>
+      <p v-else-if="error" class="p-6 text-sm text-danger">{{ error }}</p>
+      <template v-else>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Department</th><th>Status</th><th>Last Login</th></tr></thead>
+            <tbody>
+              <tr v-for="user in users" :key="user.id">
+                <td><div class="flex items-center gap-3"><span class="avatar-pill">{{ initials(user.name) }}</span><strong>{{ user.name }}</strong></div></td>
+                <td>{{ user.username || '—' }}</td><td class="text-gray-500">{{ user.email || '—' }}</td>
+                <td><span class="mini-pill">{{ user.role }}</span></td><td>{{ user.department || '—' }}</td>
+                <td><span class="status-tag" :class="user.status === 'Active' ? 'status-verified' : 'status-pending'">{{ user.status }}</span></td>
+                <td class="font-mono text-xs text-gray-500">{{ user.lastLogin }}</td>
+              </tr>
+              <tr v-if="users.length === 0"><td colspan="7" class="text-center text-gray-500">No users match these filters.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="border-t border-line bg-surface px-4 py-4 text-sm text-gray-500">Showing {{ users.length }} users</div>
+      </template>
     </article>
+
+    <BaseModal
+      :show="showAddUser"
+      title="Add User"
+      message="Create a lecturer or administrator account. The backend provisions the account and credentials."
+      :button-text="addingUser ? 'Creating...' : 'Create User'"
+      @close="showAddUser = false"
+      @confirm="addUser"
+    >
+      <div class="space-y-4 text-left">
+        <p v-if="addUserError" class="text-sm text-danger">{{ addUserError }}</p>
+        <label class="block font-mono text-[11px]">FULL NAME<input v-model="newUser.fullName" class="input-field mt-2" required /></label>
+        <label class="block font-mono text-[11px]">EMAIL<input v-model="newUser.email" type="email" class="input-field mt-2" required /></label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block font-mono text-[11px]">ROLE<select v-model="newUser.role" class="input-field mt-2"><option value="LECTURER">Lecturer</option><option value="ADMIN">Administrator</option></select></label>
+          <label class="block font-mono text-[11px]">DEPARTMENT<input v-model="newUser.department" class="input-field mt-2" /></label>
+        </div>
+      </div>
+    </BaseModal>
   </section>
 </template>

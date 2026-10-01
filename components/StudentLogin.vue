@@ -41,28 +41,27 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen grid place-items-center p-10 bg-navy relative">
+  <div class="relative grid min-h-screen place-items-center bg-navy p-4 sm:p-8">
     <div class="fixed inset-0 opacity-15 pointer-events-none" style="background-image: radial-gradient(#1680a3 1px, transparent 1px); background-size: 34px 34px;"></div>
 
-    <div class="relative z-10 flex shadow-2xl rounded-xl overflow-hidden">
+    <div class="relative z-10 flex w-full max-w-[1028px] shadow-2xl rounded-xl overflow-hidden">
       <!-- Visual panel -->
-      <div class="w-[430px] min-h-[645px] p-14 flex flex-col items-center justify-center gap-5 text-navy" style="background: linear-gradient(135deg, #dcecf7, #aacce3);">
+      <div class="relative hidden w-[430px] min-h-[645px] p-14 flex-col items-center justify-center gap-5 text-navy lg:flex" style="background: linear-gradient(135deg, #dcecf7, #aacce3);">
         <div class="text-7xl text-navy relative z-10">⬡</div>
         <h2 class="text-4xl text-center relative z-10 font-bold">Seamless Campus Flow</h2>
         <p class="relative z-10 max-w-[400px] leading-relaxed text-lg text-navy text-center">
           Your Aegis ID provides secure, frictionless access to university facilities, attendance tracking, and essential student services.
         </p>
-        <small class="absolute bottom-12 left-12 font-mono text-[11px] tracking-widest text-navy">● SECURE NODE ACTIVE</small>
       </div>
 
       <!-- Form panel -->
-      <form class="w-[598px] min-h-[645px] bg-surface p-16 pt-12" @submit.prevent="handleSubmit">
+      <form class="min-h-[600px] w-full bg-surface p-6 pt-8 sm:p-10 lg:w-[598px] lg:p-16 lg:pt-12" @submit.prevent="handleSubmit">
         <div class="flex items-center gap-3">
           <span class="text-3xl text-cyan">♢</span>
           <strong class="text-2xl">Aegis ID</strong>
         </div>
 
-        <div class="mt-24 mb-8">
+        <div class="mt-12 mb-8 lg:mt-24">
           <h1 class="text-4xl tracking-tight">Student Portal</h1>
           <p class="text-gray-600 mt-2">Enter your Student ID and password to access your secure dashboard.</p>
         </div>
@@ -97,10 +96,6 @@ const handleSubmit = async () => {
           ♙ Admin / Staff Login
         </button>
 
-        <div class="flex justify-center gap-7 mt-12 text-sm">
-          <span class="text-gray-500">ⓘ Help</span>
-          <span class="text-cyan">♧ Student Support</span>
-        </div>
       </form>
     </div>
   </div>

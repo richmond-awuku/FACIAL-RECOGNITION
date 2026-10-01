@@ -1,6 +1,6 @@
 # Frontend Integration Status — for the Backend Team
 
-**Date:** 2026-09-07
+**Date:** 2026-09-09
 **Frontend repo:** `FACIAL-RECOGNITION` (Nuxt 3)
 **Backend contract this targets:** the Django "Frontend API Integration Guide" (JWT / DRF / SimpleJWT)
 
@@ -63,12 +63,60 @@ Genuinely still open (blocked on backend or optional):
   `present_count`, and fires the same `{ new, summary }` callback the live session view already
   consumed. Works with no UI change. If the backend later ships a push channel, only this one
   adapter function needs to swap back.
-- **Dashboard / analytics endpoints** — `/api/dashboard/overview/`, `/api/analytics/*` helpers exist
-  in the adapter but the admin screens still compute the same numbers client-side from
-  `/api/attendance/records/`, which works. Swapping to the dedicated endpoints is a perf/consistency
-  nicety, not a correctness gap.
-- Admin **Sessions** scan flow still uses the client-side simulation rather than
-  `scan-classroom` / `checkin` (adapter methods ready). Deliberately deferred earlier.
+- **Dashboard / analytics response shapes** — the dashboard and trend APIs are now called, but the
+  backend still needs to document exact fields/definitions so missing metrics are not guessed.
+- **Sessions scan** — the client now captures a camera frame and calls `scan-classroom`; the
+  response should include the matched student and confidence, or make the created record immediately
+  available through the session-records endpoint.
+
+## 0.1 Status — 2026-09-09 (dynamic-data audit)
+
+The admin, lecturer, and student screens were checked for fabricated records and actions. Audit logs
+and schedules now use their API endpoints, report downloads export current API-backed records, and
+classroom scans submit a captured JPEG frame to the backend. Roster pagination and CSV export now
+operate on the fetched roster. Dashboard labels no longer claim a system is online or show a made-up
+week-over-week change. Analytics show check-in counts rather than deriving an attendance percentage
+from a list of check-in records. Camera-node settings are explicitly described as saved
+configuration, not live hardware health.
+
+Remaining backend/API work needed for complete dynamic behavior:
+
+1. **Persisted report jobs/history** — add report generation/history endpoints if reports need to
+   appear as saved jobs, have status, or be re-downloaded. Current CSVs are generated client-side
+   from attendance records, users, courses, and audit logs.
+2. **Dashboard metric contract** — document exact fields and definitions for
+   `GET /api/dashboard/overview/` and `GET /api/analytics/trends/`, including daily attendance
+   denominator, uptime, and health components. Unprovided values remain unavailable in the UI.
+3. **Live device management/health** — `node_settings` is generic saved configuration, not camera
+   node CRUD or telemetry. Provide node list/create/update/delete and health/last-seen endpoints
+   before the UI can report actual online/degraded/offline status.
+4. **Notification inbox** — no notification list, unread-count, or mark-read endpoint is exposed.
+   Global search and help/contact actions likewise have no API contract; the nonfunctional top-bar
+   controls were removed rather than implying that they work.
+5. **Schedule response contract** — `GET /api/classes/my-schedule/?week_start=...` should return each
+   assigned slot with course code/name, `day_of_week` (1=Monday through 7=Sunday), `start_time`,
+   `end_time`, and `room`. The student schedule renders only returned slots.
+6. **Roster pagination** — the roster currently paginates the fetched result in the browser. Add DRF
+   pagination and accept `search`, `department`, and page parameters if the result size requires
+   server-side pagination.
+7. **Profile-photo upload** — no profile-photo upload/read endpoint is exposed by the current
+   frontend adapter. Provide authenticated upload and profile-read fields for admin, lecturer, and
+   student accounts if photos must persist across devices.
+8. **Manual attendance status** — `POST /api/attendance/sessions/:id/manual/` currently accepts only
+   `{student}` and the backend determines the result. The UI now matches that behavior. Add an
+   explicit permission-checked status/override contract if staff need to mark absent or excused.
+9. **Student security and privacy actions** — the current API has no two-factor enrollment/status
+   flow or personal-data export request endpoint. Those controls now explain the limitation instead
+   of toggling local state or showing a fake "queued" success. Student notification preferences can
+   be saved, but notification delivery/inbox behavior still needs backend support.
+
+The scan sends multipart `image` to
+`POST /api/attendance/sessions/:id/scan-classroom/`. For deterministic immediate feedback, return
+the matched student and confidence in the response (or guarantee the created record is immediately
+available from the session-records endpoint). The browser uses native camera APIs and Canvas to
+capture the frame; no facial-recognition frontend library is needed while recognition runs on the
+backend. A student only views the slots assigned to their enrolled courses; staff create those
+weekly slots through the course-management UI.
 
 ---
 
@@ -125,7 +173,8 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 | POST | `/api/auth/token/refresh/` | `{refresh}` | expects `{access}` |
 | POST | `/api/auth/logout/` | `{refresh}` | `205` OK |
 | GET | `/api/auth/me/` | — | `{id, username, email, first_name, last_name, role}` |
-| POST | `/api/auth/users/` | `{username, email, first_name, last_name, role, password}` | admin only; used by admin "sign up" |
+| POST | `/api/auth/users/` | `{username, email, first_name, last_name, role}` | admin only; backend provisions a temporary password |
+| GET | `/api/auth/users/?search=&role=&is_active=` | — | admin user management; backend accepts search, role and active-state filters |
 | POST | `/api/auth/change-password/` | `{old_password, new_password}` | wired in adapter, not yet surfaced in UI |
 | POST | `/api/auth/student/login/` | `{student_id}` | **DOES NOT EXIST — see Gap #1** |
 
@@ -147,11 +196,14 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 
 | Method | Path | Sends | Notes |
 |---|---|---|---|
-| GET | `/api/classes/courses/` | — | used for admin course list **and** student "my courses" — **see Gap #5** |
+| GET | `/api/classes/courses/?search=&department=&semester=` | — | admin class-management list supports backend search/filter; role-scoped for student "my courses" — **see Gap #5** |
 | GET | `/api/classes/courses/:id/` | — | course detail |
 | POST | `/api/classes/courses/` | `{code, name, credits, lecturer?, students?}` | admin **Courses** screen — create course |
-| PATCH | `/api/classes/courses/:id/` | `{code?, name?, credits?, lecturer?, students?}` | edit course; `students` is the full id list (enrol/unenrol by replacing it) |
+| PATCH | `/api/classes/courses/:id/` | `{code?, name?, credits?, lecturer?, department?, semester?, students?}` | edit course; `students` is the full id list (enrol/unenrol by replacing it) |
+| Course fields | — | `department`, `semester` | included on create/update and returned by the course serializer |
 | DELETE | `/api/classes/courses/:id/` | — | delete course |
+| GET | `/api/classes/courses/:id/students/?search=<term>` | — | lecturer/admin course roster lookup; excludes students already in course |
+| POST | `/api/classes/courses/:id/students/` | `{student_ids: [<id>, ...]}` | add students to a course without replacing existing enrolments |
 | GET | `/api/classes/schedule-slots/` | — | listed then filtered client-side by `course` |
 | POST | `/api/classes/schedule-slots/` | `{course, day_of_week, start_time, end_time, room}` | add a weekly slot; `day_of_week` sent as 1–7 (Mon–Sun) |
 | DELETE | `/api/classes/schedule-slots/:id/` | — | remove a slot |
@@ -171,7 +223,7 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 | GET | `/api/attendance/my-records/` | — | student attendance history — **see Gap #8** |
 | POST | `/api/attendance/sessions/:id/manual/` | `{student}` | manual mark; status/confidence not sent |
 | GET | `/api/attendance/sessions/:id/summary/` | — | frontend also calls this wherever it used to "recompute session stats" |
-| POST | `/api/attendance/sessions/:id/scan-classroom/` | multipart `image` | adapter method `scanClassroom()` (not yet wired into the scan UI) |
+| POST | `/api/attendance/sessions/:id/scan-classroom/` | multipart `image` | admin session UI captures a JPEG frame and submits it |
 | POST | `/api/attendance/sessions/:id/checkin/` | multipart `frames` (≥3) | adapter method `checkIn()` (not yet wired) |
 | GET | `/api/attendance/audit-logs/` | — | adapter helper |
 
@@ -292,12 +344,13 @@ attendance record (ideally with nested student) as the SSE `data` payload.
 
 ---
 
-## 4. Not yet migrated on the frontend (FYI, no backend action)
+## 4. Frontend behavior that is intentionally unavailable
 
-- The admin **Sessions** screen still uses a client-side scan simulation instead of
-  `scan-classroom` / `checkin`. Adapter methods exist; wiring is a later pass.
-- `changePassword`, `scanClassroom`, `checkIn`, `generateSessions`, and the analytics/dashboard helpers
-  are implemented in `useApi.ts` but not yet called by any component.
+- Live notification inbox, global search, and help/contact actions are not shown until an endpoint
+  contract exists.
+- Two-factor enrollment and personal-data export do not report success without backend endpoints.
+- The admin session scan uses `scan-classroom`; `checkIn` remains available for a student self-check-in
+  flow if/when the product requires one.
 
 ---
 

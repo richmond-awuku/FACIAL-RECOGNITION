@@ -1,27 +1,30 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue'
 import { useApi } from '~/composables/useApi'
 import { usePortal } from '~/composables/usePortal'
-import type { Course, Student } from '~/types/database'
 
 const emit = defineEmits<{ notify: [message: string] }>()
 const api = useApi()
 const { isAdmin } = usePortal()
 
 const courses = ref<any[]>([])
-const students = ref<Student[]>([])
 const loading = ref(true)
 const error = ref('')
 
 const expandedId = ref<string | number | null>(null)
-const savingEnrollment = ref(false)
 const studentFilter = ref('')
-const draftStudents = ref<Set<number>>(new Set())
+const matchingStudents = ref<any[]>([])
+const selectedStudentIds = ref<Set<string | number>>(new Set())
+const searchingStudents = ref(false)
+const addingStudents = ref(false)
+const studentSearchError = ref('')
+let studentSearchTimer: ReturnType<typeof setTimeout> | null = null
+let studentSearchSequence = 0
 
 // New course modal
 const showAdd = ref(false)
 const adding = ref(false)
-const newCourse = ref({ code: '', name: '', credits: 3, lecturer: '' })
+const newCourse = ref({ code: '', name: '', credits: 3, lecturer: '', department: '', semester: '' })
 
 // Schedule slot draft (per expanded course)
 const slots = ref<any[]>([])
@@ -41,9 +44,8 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const [c, s] = await Promise.all([api.getCourses(), api.getStudents()])
+    const c = await api.getCourses()
     courses.value = c
-    students.value = s
   } catch (e: any) {
     error.value = e?.message || 'Unable to load courses.'
   } finally {
@@ -51,20 +53,20 @@ async function load() {
   }
 }
 
-const filteredStudents = computed(() => {
-  const q = studentFilter.value.toLowerCase().trim()
-  if (!q) return students.value
-  return students.value.filter((s) => `${s.full_name} ${s.student_id} ${s.department}`.toLowerCase().includes(q))
-})
-
 async function toggleExpand(course: any) {
+  studentSearchSequence += 1
+  if (studentSearchTimer) clearTimeout(studentSearchTimer)
   if (expandedId.value === course.id) {
     expandedId.value = null
+    matchingStudents.value = []
+    searchingStudents.value = false
     return
   }
   expandedId.value = course.id
   studentFilter.value = ''
-  draftStudents.value = new Set((course.students || []).map((n: any) => Number(n)))
+  matchingStudents.value = []
+  selectedStudentIds.value = new Set()
+  studentSearchError.value = ''
   newSlot.value = { day_of_week: 1, start_time: '09:00', end_time: '10:30', room: course.room || '' }
   slots.value = Array.isArray(course.schedule_slots) ? [...course.schedule_slots] : []
   slotsLoading.value = true
@@ -77,24 +79,57 @@ async function toggleExpand(course: any) {
   }
 }
 
-function toggleStudent(id: number) {
-  const set = draftStudents.value
+watch(studentFilter, (search) => {
+  if (studentSearchTimer) clearTimeout(studentSearchTimer)
+  const courseId = expandedId.value
+  const sequence = ++studentSearchSequence
+  studentSearchError.value = ''
+  matchingStudents.value = []
+  if (search.trim().length < 2 || courseId == null) {
+    searchingStudents.value = false
+    return
+  }
+  searchingStudents.value = true
+  studentSearchTimer = setTimeout(async () => {
+    try {
+      const results = await api.searchCourseStudents(courseId, search)
+      if (sequence === studentSearchSequence)
+        matchingStudents.value = results
+    } catch (e: any) {
+      if (sequence === studentSearchSequence)
+        studentSearchError.value = e?.message || 'Unable to search students.'
+    } finally {
+      if (sequence === studentSearchSequence)
+        searchingStudents.value = false
+    }
+  }, 300)
+})
+
+onBeforeUnmount(() => {
+  if (studentSearchTimer) clearTimeout(studentSearchTimer)
+})
+
+function toggleStudent(id: string | number) {
+  const set = selectedStudentIds.value
   if (set.has(id)) set.delete(id)
   else set.add(id)
-  draftStudents.value = new Set(set)
+  selectedStudentIds.value = new Set(set)
 }
 
-async function saveEnrollment(course: any) {
-  savingEnrollment.value = true
+async function addSelectedStudents(course: any) {
+  if (selectedStudentIds.value.size === 0) return
+  addingStudents.value = true
   try {
-    const updated = await api.setCourseStudents(course.id, [...draftStudents.value])
-    const i = courses.value.findIndex((c) => c.id === course.id)
-    if (i !== -1) courses.value[i] = { ...courses.value[i], students: updated.students ?? [...draftStudents.value] }
-    emit('notify', `Enrollment updated for ${course.course_code}.`)
+    await api.addCourseStudents(course.id, [...selectedStudentIds.value])
+    const addedCount = selectedStudentIds.value.size
+    selectedStudentIds.value = new Set()
+    studentFilter.value = ''
+    await load()
+    emit('notify', `${addedCount} student${addedCount === 1 ? '' : 's'} added to ${course.course_code}.`)
   } catch (e: any) {
-    emit('notify', `Error: ${e?.message || 'could not update enrollment'}`)
+    studentSearchError.value = e?.message || 'Unable to add students to this course.'
   } finally {
-    savingEnrollment.value = false
+    addingStudents.value = false
   }
 }
 
@@ -110,9 +145,11 @@ async function handleAdd() {
       name: newCourse.value.name.trim(),
       credits: Number(newCourse.value.credits) || 3,
       lecturer: newCourse.value.lecturer,
+      department: newCourse.value.department.trim(),
+      semester: newCourse.value.semester.trim(),
     })
     showAdd.value = false
-    newCourse.value = { code: '', name: '', credits: 3, lecturer: '' }
+    newCourse.value = { code: '', name: '', credits: 3, lecturer: '', department: '', semester: '' }
     await load()
     emit('notify', 'Course created.')
   } catch (e: any) {
@@ -193,9 +230,11 @@ const fmtTime = (t: string) => (t ? String(t).slice(0, 5) : '')
             </div>
             <p class="font-mono text-[11px] text-gray-500 mt-1">
               {{ course.credits }} CR ·
-              {{ (course.students?.length || 0) }} student{{ (course.students?.length || 0) === 1 ? '' : 's' }} ·
+              {{ (course.student_roster?.length || course.students?.length || course.student_count || 0) }} student{{ (course.student_roster?.length || course.students?.length || course.student_count || 0) === 1 ? '' : 's' }} ·
               {{ (course.schedule_slots?.length || 0) }} slot{{ (course.schedule_slots?.length || 0) === 1 ? '' : 's' }}
               <template v-if="course.professor"> · {{ course.professor }}</template>
+              <template v-if="course.department"> · {{ course.department }}</template>
+              <template v-if="course.semester"> · {{ course.semester }}</template>
             </p>
           </div>
           <button class="btn-outline" @click="toggleExpand(course)">
@@ -210,25 +249,36 @@ const fmtTime = (t: string) => (t ? String(t).slice(0, 5) : '')
           <div>
             <div class="flex items-center justify-between">
               <h3 class="font-semibold">Enrolled students</h3>
-              <span class="font-mono text-xs text-gray-500">{{ draftStudents.size }} selected</span>
+              <span class="font-mono text-xs text-gray-500">{{ (course.student_roster || []).length }} enrolled</span>
             </div>
-            <input v-model="studentFilter" class="input-field mt-3" placeholder="Filter by name, ID, department..." />
+            <div v-if="course.student_roster?.length" class="mt-3 max-h-32 overflow-y-auto rounded-md border border-line bg-white divide-y divide-line">
+              <div v-for="student in course.student_roster" :key="student.id" class="px-3 py-2 text-sm">
+                <strong>{{ student.full_name || [student.first_name, student.last_name].filter(Boolean).join(' ') }}</strong>
+                <small class="ml-2 text-gray-500">{{ student.student_id }} · {{ student.department }}</small>
+              </div>
+            </div>
+            <p v-else class="mt-2 text-sm text-gray-500">No enrolled students in the roster payload.</p>
+            <input v-model="studentFilter" class="input-field mt-3" placeholder="Search student ID, name, or department..." />
+            <p class="mt-2 text-xs text-gray-500">Enter at least 2 characters. Students already enrolled are excluded.</p>
+            <p v-if="selectedStudentIds.size" class="mt-2 text-sm text-gray-600">{{ selectedStudentIds.size }} selected to add</p>
+            <p v-if="searchingStudents" class="mt-2 text-sm text-gray-500">Searching...</p>
+            <p v-if="studentSearchError" class="mt-2 text-sm text-danger">{{ studentSearchError }}</p>
             <div class="mt-3 border border-line rounded-md bg-white max-h-64 overflow-y-auto divide-y divide-line">
               <label
-                v-for="s in filteredStudents"
+                v-for="s in matchingStudents"
                 :key="s.id"
                 class="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50"
               >
-                <input type="checkbox" class="accent-cyan" :checked="draftStudents.has(Number(s.id))" @change="toggleStudent(Number(s.id))" />
+                <input type="checkbox" class="accent-cyan" :checked="selectedStudentIds.has(s.id)" @change="toggleStudent(s.id)" />
                 <span class="min-w-0">
                   <strong class="block text-sm truncate">{{ s.full_name }}</strong>
                   <small class="font-mono text-[11px] text-gray-500">{{ s.student_id }} · {{ s.department }}</small>
                 </span>
               </label>
-              <p v-if="filteredStudents.length === 0" class="px-3 py-4 text-center text-sm text-gray-400">No matching students.</p>
+              <p v-if="!searchingStudents && studentFilter.trim().length >= 2 && matchingStudents.length === 0 && !studentSearchError" class="px-3 py-4 text-center text-sm text-gray-400">No available matching students.</p>
             </div>
-            <button class="btn-dark mt-3" :disabled="savingEnrollment" @click="saveEnrollment(course)">
-              {{ savingEnrollment ? 'Saving...' : 'Save Enrolment' }}
+            <button class="btn-dark mt-3" :disabled="addingStudents || selectedStudentIds.size === 0" @click="addSelectedStudents(course)">
+              {{ addingStudents ? 'Adding...' : 'Add selected students' }}
             </button>
           </div>
 
@@ -293,6 +343,16 @@ const fmtTime = (t: string) => (t ? String(t).slice(0, 5) : '')
             COURSE NAME
             <input v-model="newCourse.name" class="input-field mt-2" placeholder="e.g. Advanced Machine Learning" />
           </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block font-mono text-[11px] tracking-wide">
+              DEPARTMENT
+              <input v-model="newCourse.department" class="input-field mt-2" placeholder="e.g. Computer Science" />
+            </label>
+            <label class="block font-mono text-[11px] tracking-wide">
+              SEMESTER
+              <input v-model="newCourse.semester" class="input-field mt-2" placeholder="e.g. Fall 2026" />
+            </label>
+          </div>
           <div class="grid grid-cols-2 gap-3">
             <label class="block font-mono text-[11px] tracking-wide">
               CREDITS

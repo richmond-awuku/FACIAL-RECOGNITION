@@ -15,7 +15,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: [];
-  export: [];
 }>();
 
 const durationMinutes = computed(() => {
@@ -61,6 +60,25 @@ const formatDate = (iso: string | null) =>
         year: "numeric",
       })
     : "—";
+
+function exportCsv() {
+  const columns = ["student_name", "student_id", "status", "confidence_score", "check_in_time"];
+  const quote = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const rows = props.attendance.map((record) => [
+    record.students?.full_name,
+    record.students?.student_id,
+    record.status,
+    record.confidence_score,
+    record.check_in_time,
+  ]);
+  const csv = [columns.map(quote).join(","), ...rows.map((row) => row.map(quote).join(","))].join("\r\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${props.session.session_code || `session-${props.session.id}`}-attendance.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 </script>
 
 <template>
@@ -164,37 +182,48 @@ const formatDate = (iso: string | null) =>
           No attendance records for this session.
         </div>
         <div v-else class="card overflow-hidden">
-          <div class="table-head grid-cols-[2fr_1fr_0.8fr]">
-            <span>Student</span><span>Status</span><span>Check-in</span>
-          </div>
-          <div
-            v-for="r in attendance"
-            :key="r.id"
-            class="table-row grid-cols-[2fr_1fr_0.8fr]"
-          >
-            <span class="font-medium truncate">{{
-              r.students?.full_name || "Unknown"
-            }}</span>
-            <span
-              :class="[
-                'status-tag flex-shrink-0',
-                r.status === 'Present'
-                  ? 'status-verified'
-                  : r.status === 'Excused'
-                    ? 'status-pending'
-                    : 'status-flagged',
-              ]"
-              >{{ r.status }}</span
-            >
-            <span class="font-mono text-sm text-gray-500 flex-shrink-0">{{
-              formatTime(r.check_in_time)
-            }}</span>
+          <div class="overflow-x-auto">
+            <table class="data-table min-w-[640px]">
+              <thead>
+                <tr>
+                  <th class="w-[30%]">Student</th>
+                  <th class="w-[22%]">Student ID</th>
+                  <th class="w-[16%]">Status</th>
+                  <th class="w-[18%]">Check-in</th>
+                  <th class="w-[14%] text-right">Confidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in attendance" :key="r.id">
+                  <td class="font-medium">{{ r.students?.full_name || "Unknown" }}</td>
+                  <td class="font-mono text-xs text-gray-600">{{ r.students?.student_id || "—" }}</td>
+                  <td>
+                    <span
+                      :class="[
+                        'status-tag inline-block',
+                        r.status === 'Present'
+                          ? 'status-verified'
+                          : r.status === 'Excused'
+                            ? 'status-pending'
+                            : 'status-flagged',
+                      ]"
+                    >{{ r.status }}</span>
+                  </td>
+                  <td class="whitespace-nowrap font-mono text-xs text-gray-500">
+                    {{ formatTime(r.check_in_time) }}
+                  </td>
+                  <td class="text-right font-mono text-xs text-gray-600">
+                    {{ r.confidence_score != null ? `${Number(r.confidence_score).toFixed(1)}%` : "—" }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
       <div class="px-8 py-5 border-t border-line flex justify-end gap-3">
-        <button class="btn-outline" @click="$emit('export')">
+        <button class="btn-outline" @click="exportCsv">
           Export Report
         </button>
         <button class="btn-dark" @click="$emit('close')">Close</button>

@@ -22,7 +22,7 @@ type CameraNode = {
   id: string;
   name: string;
   location: string;
-  status: "online" | "offline" | "degraded";
+  status?: "online" | "offline" | "degraded";
   firmware: string;
 };
 
@@ -51,6 +51,8 @@ const biometrics = reactive<Biometrics>({
   telemetry_sharing: false,
 });
 const nodes = ref<CameraNode[]>([]);
+const showNodeForm = ref(false);
+const nodeDraft = ref({ name: "", location: "", firmware: "" });
 
 // ── Password change ──────────────────────────────────────
 const oldPassword = ref("");
@@ -85,13 +87,19 @@ async function changePassword() {
 }
 
 function addNode() {
+  if (!nodeDraft.value.name.trim() || !nodeDraft.value.location.trim()) {
+    error.value = "Enter a camera node name and location.";
+    return;
+  }
   nodes.value.push({
     id: `NODE-${Date.now().toString(36).toUpperCase()}`,
-    name: "New Camera Node",
-    location: "Lecture Hall",
-    status: "online",
-    firmware: "v2.1.0",
+    name: nodeDraft.value.name.trim(),
+    location: nodeDraft.value.location.trim(),
+    firmware: nodeDraft.value.firmware.trim(),
   });
+  nodeDraft.value = { name: "", location: "", firmware: "" };
+  showNodeForm.value = false;
+  error.value = "";
 }
 
 // ── Staff accounts (admin only) ──────────────────────────
@@ -373,41 +381,35 @@ async function saveSettings() {
           <div
             class="flex items-center justify-between border-b border-line pb-4"
           >
-            <h2 class="text-xl font-semibold">Node Management</h2>
-            <button class="btn-outline" @click="addNode">+ Add Node</button>
+            <div>
+              <h2 class="text-xl font-semibold">Camera Node Configuration</h2>
+              <p class="mt-1 text-xs text-gray-500">Saved settings only; live connectivity requires a backend device-health integration.</p>
+            </div>
+            <button class="btn-outline" @click="showNodeForm = !showNodeForm">+ Add Node</button>
+          </div>
+          <div v-if="showNodeForm" class="grid gap-3 border-b border-line py-4 sm:grid-cols-2">
+            <input v-model="nodeDraft.name" class="input-field" placeholder="Node name" aria-label="Node name" />
+            <input v-model="nodeDraft.location" class="input-field" placeholder="Location" aria-label="Node location" />
+            <input v-model="nodeDraft.firmware" class="input-field sm:col-span-2" placeholder="Firmware version (optional)" aria-label="Firmware version" />
+            <button class="btn-dark sm:col-span-2" @click="addNode">Add to saved settings</button>
           </div>
           <div v-if="nodes.length === 0" class="p-6 text-center text-gray-400">
             No camera nodes configured.
           </div>
           <div v-else>
-            <div class="table-head grid-cols-[0.5fr_2fr_1.5fr_1fr_0.8fr]">
-              <span>Status</span><span>Name</span><span>Location</span
-              ><span>Firmware</span><span>Action</span>
+            <div class="table-head grid-cols-[2fr_1.5fr_1fr_0.8fr]">
+              <span>Name</span><span>Location</span><span>Firmware</span><span>Configuration</span>
             </div>
             <div
               v-for="(node, i) in nodes"
               :key="i"
-              class="table-row grid-cols-[0.5fr_2fr_1.5fr_1fr_0.8fr] text-sm"
+              class="table-row grid-cols-[2fr_1.5fr_1fr_0.8fr] text-sm"
             >
-              <span
-                :class="[
-                  'w-3 h-3 rounded-full inline-block',
-                  node.status === 'online'
-                    ? 'bg-success'
-                    : node.status === 'degraded'
-                      ? 'bg-warning'
-                      : 'bg-danger',
-                ]"
-              />
               <strong>{{ node.name }}</strong>
               <span class="text-gray-500">{{ node.location }}</span>
-              <span class="font-mono text-xs">{{ node.firmware }}</span>
+              <span class="font-mono text-xs">{{ node.firmware || "—" }}</span>
               <div class="flex gap-2">
-                <select v-model="node.status" class="btn-outline text-xs">
-                  <option value="online">Online</option>
-                  <option value="degraded">Degraded</option>
-                  <option value="offline">Offline</option>
-                </select>
+                <span class="text-xs text-gray-500">Saved</span>
                 <button
                   class="text-danger text-xs font-mono uppercase hover:underline"
                   @click="nodes.splice(i, 1)"

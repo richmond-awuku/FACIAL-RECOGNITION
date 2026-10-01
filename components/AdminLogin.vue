@@ -34,12 +34,12 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen grid place-items-center p-10 bg-navy relative">
+  <div class="relative grid min-h-screen place-items-center bg-navy p-4 sm:p-8">
     <div class="fixed inset-0 opacity-15 pointer-events-none" style="background-image: radial-gradient(#1680a3 1px, transparent 1px); background-size: 34px 34px;"></div>
 
-    <div class="relative z-10 flex shadow-2xl rounded-xl overflow-hidden">
+    <div class="relative z-10 flex w-full max-w-[1028px] shadow-2xl rounded-xl overflow-hidden">
       <!-- Visual panel -->
-      <div class="w-[430px] min-h-[645px] p-14 flex flex-col justify-between text-white" style="background: linear-gradient(150deg, #0b355a, #02172c 72%);">
+      <div class="hidden w-[430px] min-h-[645px] p-14 flex-col justify-between text-white lg:flex" style="background: linear-gradient(150deg, #0b355a, #02172c 72%);">
         <div class="relative z-10">
           <div class="flex items-center gap-3">
             <span class="text-3xl text-cyan">♢</span>
@@ -59,7 +59,7 @@ const handleSubmit = async () => {
       </div>
 
       <!-- Form panel -->
-      <form class="w-[598px] min-h-[645px] bg-surface p-16 pt-14" @submit.prevent="handleSubmit">
+      <form class="min-h-[600px] w-full bg-surface p-6 pt-8 sm:p-10 lg:w-[598px] lg:p-16 lg:pt-14" @submit.prevent="handleSubmit">
         <div class="flex items-center gap-3 mb-2">
           <span class="text-3xl text-cyan">♢</span>
           <strong class="text-2xl">SecureCheck AI</strong>
@@ -95,9 +95,6 @@ const handleSubmit = async () => {
           Need an account? Ask a system administrator to add you under Settings → Staff Accounts.
         </p>
 
-        <small class="block mt-6 pt-6 border-t border-gray-300 text-center font-mono text-[11px] text-gray-500">
-          Session secured by <b class="text-ink font-medium">Aegis Core v4.2</b>
-        </small>
       </form>
     </div>
   </div>

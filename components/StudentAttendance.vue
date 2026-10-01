@@ -56,12 +56,6 @@ const filteredAttendance = computed(() => {
   });
 });
 
-const globalRate = computed(() => {
-  if (attendance.value.length === 0) return "0";
-  const present = attendance.value.filter((a) => a.status === "Present").length;
-  return ((present / attendance.value.length) * 100).toFixed(1);
-});
-
 const statusClass = (status: string) => {
   if (status === "Present")
     return "bg-cyan-light/20 text-cyan-dark border-cyan-light";
@@ -82,38 +76,6 @@ const formatDate = (iso: string) => {
   );
 };
 
-// Build trend chart from real data
-const trendPoints = computed(() => {
-  if (attendance.value.length === 0) return [];
-  const recent = attendance.value.slice(0, 6).reverse();
-  return recent.map((r, i) => {
-    const x = 18 + i * (562 / Math.max(recent.length - 1, 1));
-    const y =
-      235 -
-      (r.status === "Present"
-        ? (Number(r.confidence_score || 90) / 100) * 180
-        : 20);
-    return { x, y };
-  });
-});
-
-const trendPath = computed(() => {
-  if (trendPoints.value.length < 2) return "";
-  let path = `M${trendPoints.value[0].x} ${trendPoints.value[0].y}`;
-  for (let i = 1; i < trendPoints.value.length; i++) {
-    const cp1x =
-      trendPoints.value[i - 1].x +
-      (trendPoints.value[i].x - trendPoints.value[i - 1].x) / 2;
-    const cp1y = trendPoints.value[i - 1].y;
-    path += ` C${cp1x} ${cp1y} ${cp1x} ${trendPoints.value[i].y} ${trendPoints.value[i].x} ${trendPoints.value[i].y}`;
-  }
-  return path;
-});
-
-const trendAreaPath = computed(() => {
-  if (!trendPath.value) return "";
-  return trendPath.value + ` L580 235 L18 235 Z`;
-});
 </script>
 
 <template>
@@ -133,57 +95,13 @@ const trendAreaPath = computed(() => {
 
     <template v-if="!loading">
       <!-- Top layout -->
-      <div class="grid grid-cols-[1.7fr_0.8fr] gap-6 mb-6">
-        <!-- Trend chart -->
-        <article class="card overflow-hidden">
-          <div
-            class="h-16 border-b border-line px-6 flex items-center justify-between"
-          >
-            <h2 class="text-xl">Attendance Trends</h2>
-            <span class="font-mono text-xs flex items-center gap-1.5">
-              <i class="w-3 h-3 bg-cyan rounded-full" /> Present
-              <i class="w-3 h-3 bg-danger rounded-full ml-3" /> Absent
-            </span>
-          </div>
-          <div
-            class="h-[300px] mt-3 relative border border-gray-200"
-            style="
-              background: repeating-linear-gradient(
-                to bottom,
-                #fff 0,
-                #fff 58px,
-                #e6e9ec 59px
-              );
-            "
-          >
-            <svg
-              v-if="trendPath"
-              viewBox="0 0 600 260"
-              preserveAspectRatio="none"
-              class="w-full h-full"
-            >
-              <path :d="trendAreaPath" fill="#def7fb" stroke="none" />
-              <path
-                :d="trendPath"
-                fill="none"
-                stroke="#08c5ec"
-                stroke-width="4"
-              />
-              <circle
-                v-for="(p, i) in trendPoints"
-                :key="i"
-                :cx="p.x"
-                :cy="p.y"
-                r="7"
-                fill="#092642"
-                stroke="#fff"
-                stroke-width="2"
-              />
-            </svg>
-            <p v-else class="text-center text-gray-400 pt-32">
-              No attendance data yet.
-            </p>
-          </div>
+      <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.7fr_0.8fr]">
+        <article class="card flex min-h-[300px] flex-col justify-center p-8 text-center">
+          <h2 class="text-xl font-semibold">Attendance Summary</h2>
+          <strong class="my-4 text-5xl">{{ attendance.length }}</strong>
+          <p class="text-sm text-gray-500">
+            Records returned by your account. An attendance rate and target require course-session totals from the backend.
+          </p>
         </article>
 
         <aside class="flex flex-col gap-6">
@@ -191,10 +109,10 @@ const trendAreaPath = computed(() => {
           <article
             class="bg-navy-light text-white rounded-lg p-7 min-h-[155px]"
           >
-            <small class="text-cyan font-mono text-[11px]">GLOBAL RATE</small>
-            <strong class="block text-5xl my-4">{{ globalRate }}%</strong>
+            <small class="text-cyan font-mono text-[11px]">RECORDED CHECK-INS</small>
+            <strong class="block text-5xl my-4">{{ attendance.length }}</strong>
             <p class="font-mono text-[11px] text-gray-300">
-              Target threshold: 90.0%
+              Returned by the attendance API
             </p>
           </article>
 

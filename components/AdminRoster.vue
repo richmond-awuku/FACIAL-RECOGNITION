@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue";
 import { useApi } from "~/composables/useApi";
 import { useCamera } from "~/composables/useCamera";
 import { usePortal } from "~/composables/usePortal";
@@ -15,8 +15,11 @@ const videoRef = cam.videoRef;
 const { isAdmin } = usePortal();
 
 const students = ref<Student[]>([]);
+const openActionStudentId = ref<string | null>(null);
 const searchQuery = ref("");
 const departmentFilter = ref("All Departments");
+const currentPage = ref(1);
+const pageSize = 10;
 const loading = ref(true);
 const error = ref("");
 
@@ -39,13 +42,45 @@ const verifying = ref(false);
 const verifyError = ref("");
 
 onMounted(async () => {
+  document.addEventListener("click", handleOutsideActionMenu);
+  document.addEventListener("keydown", handleActionMenuKeydown);
   await loadStudents();
 });
 
-onBeforeUnmount(() => closeVerify());
+onBeforeUnmount(() => {
+  closeVerify();
+  document.removeEventListener("click", handleOutsideActionMenu);
+  document.removeEventListener("keydown", handleActionMenuKeydown);
+});
+
+function closeActionMenu() {
+  openActionStudentId.value = null;
+}
+
+function handleOutsideActionMenu(event: MouseEvent) {
+  if (!(event.target instanceof Element) || !event.target.closest(".roster-actions")) {
+    closeActionMenu();
+  }
+}
+
+function handleActionMenuKeydown(event: KeyboardEvent) {
+  if (event.key === "Escape") closeActionMenu();
+}
+
+function toggleActionMenu(studentId: string | number, event: MouseEvent) {
+  event.stopPropagation();
+  const id = String(studentId);
+  openActionStudentId.value = openActionStudentId.value === id ? null : id;
+}
+
+function runStudentAction(action: () => void) {
+  closeActionMenu();
+  action();
+}
 
 async function loadStudents() {
   loading.value = true;
+  error.value = "";
   try {
     students.value = await api.getStudents();
   } catch (e: any) {
@@ -74,6 +109,51 @@ const filteredStudents = computed(() => {
     return matchesSearch && matchesDept;
   });
 });
+
+const pageCount = computed(() => Math.max(1, Math.ceil(filteredStudents.value.length / pageSize)));
+const pageStudents = computed(() =>
+  filteredStudents.value.slice(
+    (currentPage.value - 1) * pageSize,
+    currentPage.value * pageSize,
+  ),
+);
+const firstVisible = computed(() =>
+  filteredStudents.value.length ? (currentPage.value - 1) * pageSize + 1 : 0,
+);
+const lastVisible = computed(() =>
+  Math.min(currentPage.value * pageSize, filteredStudents.value.length),
+);
+watch([searchQuery, departmentFilter], () => {
+  currentPage.value = 1;
+});
+watch(pageCount, (count) => {
+  if (currentPage.value > count) currentPage.value = count;
+});
+
+function exportCsv() {
+  const rows = filteredStudents.value;
+  if (!rows.length) {
+    emit("notify", "There are no students to export.");
+    return;
+  }
+  const columns = ["Name", "Student ID", "Email", "Department", "Enrollment Status", "Last Seen"];
+  const quote = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const csvRows = rows.map((student) => [
+    student.full_name,
+    student.student_id,
+    student.email,
+    student.department,
+    student.enrollment_status,
+    student.last_seen,
+  ]);
+  const csv = [columns.map(quote).join(","), ...csvRows.map((row) => row.map(quote).join(","))].join("\r\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "student-roster.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 const initials = (name: string) =>
   name
@@ -213,8 +293,8 @@ async function handleDelete(student: Student) {
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
 
     <article v-if="!loading" class="panel-surface overflow-hidden">
-      <div class="flex items-center justify-between gap-4 border-b border-[#e5e7eb] bg-[#f8fafb] p-4">
-        <div class="flex w-[440px] items-center gap-3 rounded-md border border-[#dfe5eb] bg-white px-3 py-2.5 text-[#64748b] shadow-[0_1px_0_rgba(15,23,42,0.02)]">
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#e5e7eb] bg-[#f8fafb] p-4">
+        <div class="flex w-full max-w-[440px] min-w-0 items-center gap-3 rounded-md border border-[#dfe5eb] bg-white px-3 py-2.5 text-[#64748b] shadow-[0_1px_0_rgba(15,23,42,0.02)]">
           <span>⌕</span>
           <input
             v-model="searchQuery"
@@ -224,16 +304,17 @@ async function handleDelete(student: Student) {
         </div>
 
         <div class="flex items-center gap-3">
-          <button class="inline-flex items-center gap-2 rounded-md border border-[#dfe5eb] bg-white px-3 py-2 text-[11px] font-mono uppercase tracking-[0.12em] text-[#475569] hover:bg-[#f8fafb]">
-            <span>⏷</span> Filter
-          </button>
-          <button class="inline-flex items-center gap-2 rounded-md border border-[#dfe5eb] bg-white px-3 py-2 text-[11px] font-mono uppercase tracking-[0.12em] text-[#475569] hover:bg-[#f8fafb]">
+          <select v-model="departmentFilter" class="rounded-md border border-[#dfe5eb] bg-white px-3 py-2 text-[11px] font-mono uppercase tracking-[0.12em] text-[#475569]">
+            <option v-for="department in departments" :key="department" :value="department">{{ department }}</option>
+          </select>
+          <button class="inline-flex items-center gap-2 rounded-md border border-[#dfe5eb] bg-white px-3 py-2 text-[11px] font-mono uppercase tracking-[0.12em] text-[#475569] hover:bg-[#f8fafb]" @click="exportCsv">
             <span>⇩</span> Export CSV
           </button>
         </div>
       </div>
 
-      <table class="w-full border-collapse">
+      <div class="overflow-x-auto">
+      <table class="min-w-[760px] w-full border-collapse">
         <thead>
           <tr>
             <th class="border-b border-[#e5e7eb] bg-[#f3f5f7] px-4 py-3 text-left text-[11px] font-mono uppercase tracking-[0.14em] text-[#64748b]">Student name</th>
@@ -245,7 +326,7 @@ async function handleDelete(student: Student) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="student in filteredStudents" :key="student.id" class="border-b border-[#edf1f5] bg-white text-[#1f2d3d]">
+          <tr v-for="student in pageStudents" :key="student.id" class="border-b border-[#edf1f5] bg-white text-[#1f2d3d]">
             <td class="px-4 py-4">
               <div class="flex items-center gap-3">
                 <span class="flex h-9 w-9 items-center justify-center rounded-full border border-[#e5e7eb] bg-[#f2f6f8] text-[10px] font-bold text-[#1f2d3d]">
@@ -264,26 +345,63 @@ async function handleDelete(student: Student) {
             </td>
             <td class="px-4 py-4 font-mono text-[13px] text-[#64748b]">{{ formatDate(student.last_seen) }}</td>
             <td class="px-4 py-4">
-              <div class="flex items-center gap-3">
-                <button class="text-[11px] font-mono uppercase text-[#334155] hover:text-[#2fb3d4]" @click="viewStudent = student">View</button>
-                <button v-if="student.enrollment_status !== 'Verified'" class="text-[11px] font-mono uppercase text-[#2fb3d4] hover:underline" @click="handleVerify(student)">Verify</button>
-                <button v-if="isAdmin" class="text-[11px] font-mono uppercase text-[#ef4444] hover:underline" @click="handleDelete(student)">Del</button>
+              <div class="roster-actions relative flex justify-end">
+                <button
+                  type="button"
+                  class="flex h-9 w-9 items-center justify-center rounded-md text-[#475569] hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan"
+                  :aria-label="`Actions for ${student.full_name}`"
+                  aria-haspopup="menu"
+                  :aria-expanded="openActionStudentId === String(student.id)"
+                  @click="toggleActionMenu(student.id, $event)"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5 fill-current">
+                    <circle cx="5" cy="12" r="1.8" />
+                    <circle cx="12" cy="12" r="1.8" />
+                    <circle cx="19" cy="12" r="1.8" />
+                  </svg>
+                </button>
+                <div
+                  v-if="openActionStudentId === String(student.id)"
+                  role="menu"
+                  class="absolute right-0 top-full z-20 mt-1 min-w-36 rounded-md border border-[#e5e7eb] bg-white py-1 shadow-lg"
+                  @click.stop
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    class="block w-full px-4 py-2 text-left text-sm text-[#334155] hover:bg-gray-50"
+                    @click="runStudentAction(() => { viewStudent = student })"
+                  >View</button>
+                  <button
+                    v-if="student.enrollment_status !== 'Verified'"
+                    type="button"
+                    role="menuitem"
+                    class="block w-full px-4 py-2 text-left text-sm text-cyan-dark hover:bg-gray-50"
+                    @click="runStudentAction(() => handleVerify(student))"
+                  >Verify</button>
+                  <button
+                    v-if="isAdmin"
+                    type="button"
+                    role="menuitem"
+                    class="block w-full px-4 py-2 text-left text-sm text-danger hover:bg-red-50"
+                    @click="runStudentAction(() => handleDelete(student))"
+                  >Delete</button>
+                </div>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
+      </div>
 
       <p v-if="filteredStudents.length === 0" class="p-6 text-center text-gray-400">No students found.</p>
 
       <div class="flex items-center justify-between border-t border-[#e5e7eb] bg-[#f8fafb] px-4 py-4 text-[14px] text-[#64748b]">
-        <span>Showing 1 to 5 of 2,492 entries</span>
+        <span>Showing {{ firstVisible }} to {{ lastVisible }} of {{ filteredStudents.length }} entries</span>
         <div class="flex items-center gap-2">
-          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b]">‹</button>
-          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#0d2337] bg-[#0d2337] text-white">1</button>
-          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b]">2</button>
-          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b]">3</button>
-          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b]">›</button>
+          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b] disabled:opacity-40" :disabled="currentPage <= 1" @click="currentPage--">‹</button>
+          <span class="px-2 font-mono text-xs">{{ currentPage }} / {{ pageCount }}</span>
+          <button class="flex h-9 w-9 items-center justify-center rounded border border-[#dfe5eb] bg-white text-[#64748b] disabled:opacity-40" :disabled="currentPage >= pageCount" @click="currentPage++">›</button>
         </div>
       </div>
     </article>

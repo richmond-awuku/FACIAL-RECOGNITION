@@ -114,7 +114,7 @@ async function submitOverride() {
 
     <template v-if="!loading && currentStudent">
       <!-- Top grid -->
-      <div class="grid grid-cols-[2fr_0.95fr] gap-6 my-8">
+      <div class="my-8 grid grid-cols-1 gap-6 xl:grid-cols-[2fr_0.95fr]">
         <!-- Identity card -->
         <article
           class="card flex items-center gap-6 p-6 relative overflow-hidden min-h-[204px]"

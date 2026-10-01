@@ -1,28 +1,59 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useApi } from '~/composables/useApi'
 
-const query = ref('')
-const logs = ref([
-  { id: 1, time: 'Sep 6, 2025 10:34 AM', user: 'Admin User', action: 'Generated attendance report', module: 'Reports', status: 'Success' },
-  { id: 2, time: 'Sep 6, 2025 09:47 AM', user: 'Dr. Sarah Jenkins', action: 'Started attendance session', module: 'Sessions', status: 'Success' },
-  { id: 3, time: 'Sep 6, 2025 08:12 AM', user: 'Admin User', action: 'Created new lecturer account', module: 'User Management', status: 'Success' },
-  { id: 4, time: 'Sep 5, 2025 04:32 PM', user: 'Dr. Michael Chen', action: 'Updated class enrollment', module: 'Class Management', status: 'Success' },
-  { id: 5, time: 'Sep 5, 2025 02:16 PM', user: 'Admin User', action: 'Changed biometric settings', module: 'Settings', status: 'Success' },
-])
+const api = useApi()
+const logs = ref<any[]>([])
+const loading = ref(true)
+const error = ref('')
 
-const filteredLogs = computed(() => logs.value.filter((log) => `${log.user} ${log.action} ${log.module}`.toLowerCase().includes(query.value.toLowerCase())))
+onMounted(async () => {
+  try {
+    logs.value = await api.getAuditLogs()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Unable to load audit logs.'
+  } finally {
+    loading.value = false
+  }
+})
+
+function actor(log: any) {
+  return log.user_name || log.username || log.user?.full_name || log.user?.email || 'System'
+}
+
+function eventName(log: any) {
+  return log.action || log.event || log.message || log.module || 'Audit event'
+}
+
+function eventTime(log: any) {
+  const value = log.created_at || log.timestamp
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString()
+}
 </script>
 
 <template>
   <section class="space-y-6">
-    <div><h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">System Logs</h1><p class="mt-1.5 text-[15px] text-[#64748b]">Review account, attendance and system activity.</p></div>
-    <article class="panel-surface overflow-hidden">
-      <div class="border-b border-line bg-[#f8fafb] p-4"><input v-model="query" class="input-field max-w-[440px]" placeholder="Search logs..." /></div>
-      <table class="data-table">
-        <thead><tr><th>Date &amp; Time</th><th>User</th><th>Action</th><th>Module</th><th>Status</th></tr></thead>
-        <tbody><tr v-for="log in filteredLogs" :key="log.id"><td class="font-mono text-xs text-gray-500">{{ log.time }}</td><td class="font-medium">{{ log.user }}</td><td>{{ log.action }}</td><td><span class="mini-pill">{{ log.module }}</span></td><td><span class="status-tag status-verified">{{ log.status }}</span></td></tr></tbody>
+    <div>
+      <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">System Logs</h1>
+      <p class="mt-1.5 text-[15px] text-[#64748b]">Audit events returned by the backend.</p>
+    </div>
+    <p v-if="loading" class="text-sm text-gray-500">Loading audit logs...</p>
+    <p v-else-if="error" class="text-sm text-danger">{{ error }}</p>
+    <article v-else class="panel-surface overflow-x-auto">
+      <table class="data-table min-w-[680px]">
+        <thead><tr><th>Event</th><th>Actor</th><th>Details</th><th>Date</th></tr></thead>
+        <tbody>
+          <tr v-for="(log, index) in logs" :key="log.id ?? index">
+            <td class="font-medium">{{ eventName(log) }}</td>
+            <td>{{ actor(log) }}</td>
+            <td>{{ log.details || log.description || log.module || '—' }}</td>
+            <td class="font-mono text-xs text-gray-500">{{ eventTime(log) }}</td>
+          </tr>
+        </tbody>
       </table>
-      <div class="border-t border-line bg-surface px-4 py-4 text-sm text-gray-500">Showing {{ filteredLogs.length }} of {{ logs.length }} log entries</div>
+      <p v-if="!logs.length" class="p-6 text-center text-sm text-gray-500">No audit events returned.</p>
     </article>
   </section>
 </template>

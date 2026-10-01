@@ -46,17 +46,12 @@ const startingSession = ref(false);
 // Manual entry
 const showManualEntry = ref(false);
 const manualStudentId = ref("");
-const manualStatus = ref<"Present" | "Absent" | "Excused">("Present");
 
 // Realtime subscription
 let subscription: any = null;
 
-// Scanning simulation
-const scanProgress = ref(0);
-const scanMatch = ref<{ name: string; id: string; confidence: number } | null>(
-  null,
-);
-let scanTimer: ReturnType<typeof setInterval> | null = null;
+const scanMatch = ref<{ name: string; id: string; confidence: number | null } | null>(null);
+const scanning = ref(false);
 
 onMounted(async () => {
   try {
@@ -84,7 +79,6 @@ onMounted(async () => {
 onUnmounted(() => {
   stopCamera();
   if (subscription?.close) subscription.close();
-  if (scanTimer) clearInterval(scanTimer);
 });
 
 function subscribeToLiveUpdates(sessionId: string) {
@@ -126,7 +120,6 @@ async function startCamera() {
       await videoRef.value.play();
     }
     cameraActive.value = true;
-    startScanning();
   } catch (e: any) {
     cameraError.value =
       "Unable to access camera. " +
@@ -140,20 +133,7 @@ function stopCamera() {
     stream = null;
   }
   cameraActive.value = false;
-  if (scanTimer) {
-    clearInterval(scanTimer);
-    scanTimer = null;
-  }
-  scanProgress.value = 0;
   scanMatch.value = null;
-}
-
-function startScanning() {
-  if (scanTimer) clearInterval(scanTimer);
-  scanProgress.value = 0;
-  scanTimer = setInterval(() => {
-    scanProgress.value = (scanProgress.value + 1) % 100;
-  }, 50);
 }
 
 const presentPct = computed(() => {
@@ -207,17 +187,11 @@ async function handleStop() {
     return;
   }
   try {
-    const stoppedSession = session.value;
-    const stoppedAttendance = [...attendance.value];
-    await api.stopSession(stoppedSession.id);
+    const stoppedSession = await api.stopSession(session.value.id);
     await api.updateSessionStats(stoppedSession.id);
     const finalAttendance = await api.getAttendanceBySession(stoppedSession.id);
     const reviewItems = await api.getSessionReviewItems(stoppedSession.id);
-    summarySession.value = {
-      ...stoppedSession,
-      status: "completed",
-      ended_at: new Date().toISOString(),
-    };
+    summarySession.value = stoppedSession;
     summaryAttendance.value = finalAttendance;
     summaryReviewItems.value = reviewItems;
     showSummary.value = true;
@@ -247,15 +221,9 @@ async function handleManualEntry() {
       emit("notify", `Student ${manualStudentId.value} not found in roster.`);
       return;
     }
-    const confidence =
-      manualStatus.value === "Present"
-        ? Math.round(85 + Math.random() * 15)
-        : null;
     await api.recordAttendance({
       student_id: student.id,
       session_id: session.value.id,
-      status: manualStatus.value,
-      confidence_score: confidence,
     });
     await api.updateSessionStats(session.value.id);
     attendance.value = await api.getAttendanceBySession(session.value.id);
@@ -263,54 +231,57 @@ async function handleManualEntry() {
     if (sessions.length > 0) session.value = sessions[0];
     showManualEntry.value = false;
     manualStudentId.value = "";
-    emit("notify", `${student.full_name} marked ${manualStatus.value}.`);
+    emit("notify", `Manual attendance was recorded for ${student.full_name}. Status is determined by the server.`);
   } catch (e: any) {
     emit("notify", `Error: ${e.message}`);
   }
 }
 
-// Simulate a facial recognition scan picking a random student
-async function simulateScan() {
-  if (!session.value || students.value.length === 0) return;
-  const unmarked = students.value.filter(
-    (s) => !attendance.value.some((a) => a.student_id === s.id),
-  );
-  if (unmarked.length === 0) {
-    emit("notify", "All students have been marked present.");
+async function scanClassroomFrame() {
+  if (!session.value || !videoRef.value || !cameraActive.value || scanning.value) return;
+  const video = videoRef.value;
+  if (!video.videoWidth || !video.videoHeight) {
+    emit("notify", "The camera is not ready. Wait for the video feed and try again.");
     return;
   }
-  const student = unmarked[Math.floor(Math.random() * unmarked.length)];
-
-  if (!student) {
-    emit("notify", "No unmarked student found.");
-    return;
-  }
-  const confidence = Math.round(88 + Math.random() * 12);
+  scanning.value = true;
   try {
-    await api.recordAttendance({
-      student_id: student.id,
-      session_id: session.value.id,
-      status: "Present",
-      confidence_score: confidence,
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not capture a frame from the camera.");
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const image = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not encode the camera frame.")), "image/jpeg", 0.9);
     });
-    await api.updateSessionStats(session.value.id);
+    const formData = new FormData();
+    formData.append("image", image, "classroom-frame.jpg");
+    const result = await api.scanClassroom(session.value.id, formData);
+    const recordsBefore = new Set(attendance.value.map((record) => String(record.id)));
     attendance.value = await api.getAttendanceBySession(session.value.id);
+    await api.updateSessionStats(session.value.id);
     const sessions = await api.getActiveSessions();
     if (sessions.length > 0) session.value = sessions[0];
-    scanMatch.value = {
-      name: student.full_name,
-      id: student.student_id,
-      confidence,
-    };
-    setTimeout(() => {
-      scanMatch.value = null;
-    }, 3000);
-    emit(
-      "notify",
-      `${student.full_name} recognized at ${confidence}% confidence.`,
-    );
+
+    const response = result as any;
+    const newRecord = attendance.value.find((record) => !recordsBefore.has(String(record.id)));
+    const matchedStudent = response?.student || response?.record?.student || newRecord?.students;
+    if (matchedStudent) {
+      scanMatch.value = {
+        name: matchedStudent.full_name || [matchedStudent.first_name, matchedStudent.last_name].filter(Boolean).join(" ") || "Recognized student",
+        id: matchedStudent.student_id || matchedStudent.student_id_number || String(matchedStudent.id ?? ""),
+        confidence: response?.confidence_score ?? response?.record?.confidence_score ?? newRecord?.confidence_score ?? null,
+      };
+      emit("notify", `Face scan completed for ${scanMatch.value.name}.`);
+      setTimeout(() => { scanMatch.value = null; }, 4000);
+    } else {
+      emit("notify", response?.detail || response?.message || "Scan completed; the backend did not return a matched student.");
+    }
   } catch (e: any) {
-    emit("notify", `Scan error: ${e.message}`);
+    emit("notify", `Scan error: ${e?.message || "Unable to process the camera frame."}`);
+  } finally {
+    scanning.value = false;
   }
 }
 </script>
@@ -394,7 +365,7 @@ async function simulateScan() {
         </div>
       </div>
 
-      <div class="grid grid-cols-[1.65fr_0.8fr] gap-6">
+      <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.65fr_0.8fr]">
         <!-- Camera feed -->
         <article class="rounded-lg bg-[#001319] overflow-hidden">
           <div
@@ -458,12 +429,6 @@ async function simulateScan() {
                 class="absolute w-9 h-9 border-cyan border-solid border-b-4 border-r-4 right-5 bottom-5 z-10"
               />
 
-              <!-- Scanning line -->
-              <div
-                class="absolute left-0 right-0 h-0.5 bg-cyan/60 z-10"
-                :style="{ top: scanProgress + '%' }"
-              />
-
               <!-- Face match box -->
               <div
                 v-if="scanMatch"
@@ -475,7 +440,7 @@ async function simulateScan() {
                   <b class="font-mono text-xs"
                     >MATCH FOUND
                     <span class="text-cyan float-right"
-                      >{{ scanMatch.confidence }}%</span
+                      >{{ scanMatch.confidence == null ? '—' : `${scanMatch.confidence}%` }}</span
                     ></b
                   >
                   <strong class="text-sm">{{ scanMatch.name }}</strong>
@@ -488,18 +453,12 @@ async function simulateScan() {
               <!-- Scan button -->
               <button
                 v-if="!scanMatch"
-                class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-cyan text-navy px-6 py-2.5 rounded font-mono text-xs font-bold z-10 hover:bg-cyan/80 transition-colors"
-                @click="simulateScan"
+                class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-cyan text-navy px-6 py-2.5 rounded font-mono text-xs font-bold z-10 hover:bg-cyan/80 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                :disabled="scanning"
+                @click="scanClassroomFrame"
               >
-                ⚡ Simulate Face Scan
+                {{ scanning ? 'Processing frame...' : 'Scan Classroom Frame' }}
               </button>
-
-              <div
-                v-if="!scanMatch"
-                class="absolute bottom-12 right-8 text-gray-400 font-mono text-xs z-10"
-              >
-                ANALYZING... {{ scanProgress }}%
-              </div>
             </template>
           </div>
         </article>
@@ -588,14 +547,13 @@ async function simulateScan() {
       :attendance="summaryAttendance"
       :review-items="summaryReviewItems"
       @close="showSummary = false"
-      @export="emit('notify', 'Report export queued for download.')"
     />
 
     <!-- Manual entry modal -->
     <BaseModal
       :show="showManualEntry"
       title="Manual Attendance Entry"
-      message="Enter the student ID and status to manually mark attendance."
+      message="Enter the student ID to record attendance. The server determines the resulting status."
       button-text="Mark Attendance"
       @close="showManualEntry = false"
       @confirm="handleManualEntry"
@@ -610,14 +568,6 @@ async function simulateScan() {
               class="input-field mt-2"
               placeholder="e.g. STU-8829-XR"
             />
-          </label>
-          <label class="block font-mono text-[11px] tracking-wide mt-4">
-            STATUS
-            <select v-model="manualStatus" class="input-field mt-2">
-              <option value="Present">Present</option>
-              <option value="Absent">Absent</option>
-              <option value="Excused">Excused</option>
-            </select>
           </label>
         </div>
       </template>

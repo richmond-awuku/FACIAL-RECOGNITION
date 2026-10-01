@@ -12,7 +12,7 @@ const cam = useCamera()
 const loading = ref(true)
 const saving = ref(false)
 const error = ref('')
-const settings = reactive({ attendance_notifications: true, security_alerts: true, campus_announcements: false, two_factor_enabled: false })
+const settings = reactive({ attendance_notifications: true, security_alerts: true, campus_announcements: false })
 
 // ── Password change ──────────────────────────────────────
 const oldPassword = ref('')
@@ -192,13 +192,12 @@ async function runCapture() {
           <label class="block mt-4 text-xs font-mono uppercase text-gray-500">New password<PasswordInput v-model="newPassword" class="mt-2" autocomplete="new-password" placeholder="Enter a new password" /></label>
           <p v-if="pwError" class="mt-3 text-sm text-danger">{{ pwError }}</p>
           <button class="btn-outline mt-3" :disabled="changingPw" @click="changePassword">{{ changingPw ? 'Updating…' : 'Update Password' }}</button>
-          <div class="border-t border-line mt-6 pt-5"><div class="flex justify-between gap-3"><div><h3 class="font-semibold">Two-Factor Authentication</h3><p class="text-sm text-gray-500 mt-1">Add an extra layer of security to your account.</p></div><span :class="settings.two_factor_enabled ? 'status-tag status-verified' : 'status-tag status-pending'">{{ settings.two_factor_enabled ? 'ACTIVE' : 'INACTIVE' }}</span></div><button class="btn-dark w-full mt-4" @click="settings.two_factor_enabled = !settings.two_factor_enabled">{{ settings.two_factor_enabled ? 'Disable 2FA' : 'Enable 2FA' }}</button></div>
+          <div class="border-t border-line mt-6 pt-5"><h3 class="font-semibold">Two-Factor Authentication</h3><p class="text-sm text-gray-500 mt-1">Two-factor enrollment is not available through the current account API.</p></div>
         </div>
         <div class="card p-6">
           <h2 class="text-xl font-semibold border-b border-line pb-4">Data Privacy</h2>
-          <p class="text-sm text-gray-600 mt-5">Your biometric templates are encrypted and stored securely. Attendance records are retained according to institutional policy.</p>
-          <div class="rounded-md border border-line bg-gray-50 p-4 mt-5"><strong class="font-mono text-xs uppercase">Data retention policy</strong><p class="text-sm text-gray-600 mt-2">Biometric data is automatically purged after unenrollment. You can request a copy of your personal records at any time.</p></div>
-          <button class="w-full mt-4 border border-danger text-danger rounded-md py-3 text-sm hover:bg-red-50" @click="emit('notify', 'Your data export request has been queued.')">Request Data Export</button>
+          <p class="text-sm text-gray-600 mt-5">Biometric data handling and attendance retention follow institutional policy. Contact your administrator for details.</p>
+          <div class="rounded-md border border-line bg-gray-50 p-4 mt-5"><strong class="font-mono text-xs uppercase">Personal data export</strong><p class="text-sm text-gray-600 mt-2">A data-export request cannot be submitted from the current backend API.</p></div>
         </div>
       </div>
     </div>
