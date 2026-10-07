@@ -43,6 +43,12 @@ const SESSION_STATUS: Record<string, string> = {
   ENDED: "completed",
   CANCELLED: "completed",
 };
+const ATTENDANCE_STATUS: Record<string, string> = {
+  PRESENT: "Present",
+  ABSENT: "Absent",
+  EXCUSED: "Excused",
+  LATE: "Late",
+};
 const REVIEW_STATUS: Record<string, string> = {
   OPEN: "Open",
   APPROVED: "Approved",
@@ -193,7 +199,9 @@ function normAttendance(r: any): any {
     id: r.id,
     student_id: studentObj ? r.student.id : r.student,
     session_id: sessionObj ? r.session.id : r.session,
-    status: r.status ?? "Present", // every returned record is a check-in
+    status: ATTENDANCE_STATUS[String(r.status ?? "PRESENT").toUpperCase()] ??
+      r.status ??
+      "Present",
     confidence_score: r.confidence_score ?? null,
     check_in_time: r.check_in_time ?? r.timestamp ?? r.created_at ?? null,
     created_at: r.created_at ?? r.timestamp ?? null,
@@ -683,13 +691,18 @@ export function useApi() {
     );
   }
 
-  async function recordAttendance(payload: any) {
-    // Manual override — status/confidence are backend-managed for manual marks.
-    const sessionId = payload.session_id ?? payload.session;
-    const student = payload.student_id ?? payload.student;
-    return call(`/api/attendance/sessions/${sessionId}/manual/`, {
+  async function recordAttendance(payload: {
+    session_id: string;
+    student_id: string;
+    status?: "PRESENT" | "ABSENT" | "EXCUSED";
+  }) {
+    const body: { student: string; status?: "PRESENT" | "ABSENT" | "EXCUSED" } = {
+      student: payload.student_id,
+    };
+    if (payload.status) body.status = payload.status;
+    return call(`/api/attendance/sessions/${payload.session_id}/manual/`, {
       method: "POST",
-      body: { student },
+      body,
     });
   }
 
@@ -852,6 +865,9 @@ export function useApi() {
   async function getDashboardOverview() {
     return call("/api/dashboard/overview/");
   }
+  async function getSystemHealth() {
+    return call("/api/settings/health/");
+  }
   async function getAttendanceTrends(months = 6) {
     return asArray(await call(`/api/analytics/trends/?months=${months}`));
   }
@@ -994,6 +1010,7 @@ export function useApi() {
     updateSupportTicket,
     // dashboard & analytics
     getDashboardOverview,
+    getSystemHealth,
     getAttendanceTrends,
     getAttendanceByDepartment,
     getAtRiskStudents,

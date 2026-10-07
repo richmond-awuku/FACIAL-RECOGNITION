@@ -39,7 +39,7 @@ export type AttendanceRecord = {
   id: string
   student_id: string
   session_id: string
-  status: 'Present' | 'Absent' | 'Excused'
+  status: 'Present' | 'Absent' | 'Excused' | 'Late'
   confidence_score: number | null
   check_in_time: string
   created_at: string

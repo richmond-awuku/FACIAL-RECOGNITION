@@ -46,6 +46,7 @@ const startingSession = ref(false);
 // Manual entry
 const showManualEntry = ref(false);
 const manualStudentId = ref("");
+const manualAttendanceStatus = ref<"PRESENT" | "ABSENT" | "EXCUSED">("PRESENT");
 
 // Realtime subscription
 let subscription: any = null;
@@ -221,9 +222,11 @@ async function handleManualEntry() {
       emit("notify", `Student ${manualStudentId.value} not found in roster.`);
       return;
     }
+    const markedStatus = manualAttendanceStatus.value;
     await api.recordAttendance({
       student_id: student.id,
       session_id: session.value.id,
+      status: markedStatus,
     });
     await api.updateSessionStats(session.value.id);
     attendance.value = await api.getAttendanceBySession(session.value.id);
@@ -231,7 +234,8 @@ async function handleManualEntry() {
     if (sessions.length > 0) session.value = sessions[0];
     showManualEntry.value = false;
     manualStudentId.value = "";
-    emit("notify", `Manual attendance was recorded for ${student.full_name}. Status is determined by the server.`);
+    manualAttendanceStatus.value = "PRESENT";
+    emit("notify", `${student.full_name}'s attendance was marked ${markedStatus.toLowerCase()}.`);
   } catch (e: any) {
     emit("notify", `Error: ${e.message}`);
   }
@@ -553,8 +557,8 @@ async function scanClassroomFrame() {
     <BaseModal
       :show="showManualEntry"
       title="Manual Attendance Entry"
-      message="Enter the student ID to record attendance. The server determines the resulting status."
-      button-text="Mark Attendance"
+      message="Set or correct this student's attendance status for the active session."
+      button-text="Save Attendance"
       @close="showManualEntry = false"
       @confirm="handleManualEntry"
     >
@@ -568,6 +572,14 @@ async function scanClassroomFrame() {
               class="input-field mt-2"
               placeholder="e.g. STU-8829-XR"
             />
+          </label>
+          <label class="block font-mono text-[11px] tracking-wide mt-4">
+            ATTENDANCE STATUS
+            <select v-model="manualAttendanceStatus" class="input-field mt-2">
+              <option value="PRESENT">Present</option>
+              <option value="ABSENT">Absent</option>
+              <option value="EXCUSED">Excused</option>
+            </select>
           </label>
         </div>
       </template>

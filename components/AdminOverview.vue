@@ -32,7 +32,9 @@ onMounted(async () => {
     const today = new Date().toLocaleDateString();
     todayCheckIns.value = attendanceRecords.filter((record) => {
       const timestamp = record.check_in_time || record.created_at;
-      return timestamp && new Date(timestamp).toLocaleDateString() === today;
+      return record.status === "Present" &&
+        timestamp &&
+        new Date(timestamp).toLocaleDateString() === today;
     }).length;
 
     if (sessionData.length > 0) {
@@ -55,7 +57,9 @@ const initials = (name: string) =>
     .toUpperCase();
 
 const formatTime = (iso: string) => {
+  if (!iso) return "—";
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",

@@ -8,6 +8,41 @@ This document tells the backend team **exactly what the frontend now calls**, wh
 sends, what response shapes it needs, and **which endpoints/behaviors are still missing or mismatched**
 so you can close the gap.
 
+## Current alignment — 2026-10-07
+
+This section supersedes older status notes and gap statements below where they conflict. The backend
+update supplied on 2026-10-04 is not checked into this frontend workspace as `API_ENDPOINTS.md`, so
+the response details here are limited to that update's confirmed contract.
+
+- **Enrollment:** student self-enrollment already sends six repeated multipart `frames` fields. The
+  backend accepts 3–8 frames; six is within range. Admin/lecturer supervised enrollment is a separate
+  route and still sends a single `image` field.
+- **Attendance trends:** admin analytics and the system overview now consume
+  `GET /api/analytics/trends/` fields `period` and `attendance_rate` rather than deriving monthly
+  check-in counts or reading the obsolete `label`/`value` names.
+- **System health:** the admin overview now calls the admin-only `GET /api/settings/health/` endpoint
+  and displays database, email, face-model, and uptime status. A model with `loaded: false` is shown
+  as lazy/unloaded, not unhealthy.
+- **Admin dashboard overview:** the dashboard maps the live response keys `total_roster`,
+  `total_users`, `total_classes`, `total_attendance_today`, `todays_attendance_rate`, and
+  `active_sessions`. Its six-month chart reads `period` / `attendance_rate` from the trends endpoint.
+  Present/absent/late counts use today's rows from `/api/attendance/records/` unless an explicit
+  dashboard summary is returned; late is counted only when the backend marks a row `LATE` or sets an
+  `is_late`/`late` flag. If the records endpoint does not provide complete same-day status rows, the
+  backend still needs to expose authoritative present/absent/late totals.
+- **Manual attendance:** the active-session dialog now sends `PRESENT`, `ABSENT`, or `EXCUSED` to
+  `POST /api/attendance/sessions/:id/manual/`; refreshed records normalize the backend's uppercase
+  status enums for the UI. The backend updates an existing student/session record in place.
+- **Audit logs:** System Logs displays face-recognition scan/check-in attempts. An empty list is
+  expected until a real `scan-classroom` or `checkin` call has been made.
+- **Backend fixes not yet surfaced as frontend features:** the notification inbox endpoints and
+  authenticated profile-photo API are now available according to the update, but this frontend
+  adapter/UI does not yet call them. The detailed notification item and profile upload/read payload
+  shapes are not present in this workspace; wire those surfaces against `API_ENDPOINTS.md` §1/§9
+  rather than guessing field names or multipart keys.
+- The backend's automatic session-timestamp backfill and the cleanup/capping of face-model loading
+  require no frontend behavior change.
+
 ---
 
 ## 0. Status — 2026-09-07 (round 2)
@@ -56,67 +91,64 @@ problem":
   /api/classes/courses/`? The form treats it as optional (a user-id text field); confirm or tell us
   the expected default.
 
-Genuinely still open (blocked on backend or optional):
+Genuinely still open (blocked on backend or optional; see the current alignment section above):
 
 - **Realtime** — no SSE/WebSocket channel exists (`/events/` 404s), so `subscribeToSessionAttendance`
   now **polls `GET /api/attendance/sessions/:id/summary/` every 5s**, diffs `recent_checkins` /
   `present_count`, and fires the same `{ new, summary }` callback the live session view already
   consumed. Works with no UI change. If the backend later ships a push channel, only this one
   adapter function needs to swap back.
-- **Dashboard / analytics response shapes** — the dashboard and trend APIs are now called, but the
-  backend still needs to document exact fields/definitions so missing metrics are not guessed.
-- **Sessions scan** — the client now captures a camera frame and calls `scan-classroom`; the
-  response should include the matched student and confidence, or make the created record immediately
-  available through the session-records endpoint.
+- **Sessions scan** — the client captures a camera frame and calls `scan-classroom`; the confirmed
+  response/read-after-write behavior is documented in the current alignment section above.
 
-## 0.1 Status — 2026-09-09 (dynamic-data audit)
+## 0.1 Historical status — 2026-09-09 (dynamic-data audit)
 
 The admin, lecturer, and student screens were checked for fabricated records and actions. Audit logs
 and schedules now use their API endpoints, report downloads export current API-backed records, and
 classroom scans submit a captured JPEG frame to the backend. Roster pagination and CSV export now
 operate on the fetched roster. Dashboard labels no longer claim a system is online or show a made-up
-week-over-week change. Analytics show check-in counts rather than deriving an attendance percentage
-from a list of check-in records. Camera-node settings are explicitly described as saved
-configuration, not live hardware health.
+week-over-week change. This dated snapshot predates the 2026-10-04 backend update; its analytics,
+notification, profile-photo, and manual-attendance notes are superseded by the current alignment
+section above.
 
 Remaining backend/API work needed for complete dynamic behavior:
 
 1. **Persisted report jobs/history** — add report generation/history endpoints if reports need to
    appear as saved jobs, have status, or be re-downloaded. Current CSVs are generated client-side
    from attendance records, users, courses, and audit logs.
-2. **Dashboard metric contract** — document exact fields and definitions for
-   `GET /api/dashboard/overview/` and `GET /api/analytics/trends/`, including daily attendance
-   denominator, uptime, and health components. Unprovided values remain unavailable in the UI.
+2. **Dashboard metric contract** — trend fields (`period`, `attendance_rate`) and system-health
+   fields are now consumed by the frontend. Other dashboard metrics remain unavailable unless
+   returned by `GET /api/dashboard/overview/`; the UI does not fabricate missing values.
 3. **Live device management/health** — `node_settings` is generic saved configuration, not camera
    node CRUD or telemetry. Provide node list/create/update/delete and health/last-seen endpoints
    before the UI can report actual online/degraded/offline status.
-4. **Notification inbox** — no notification list, unread-count, or mark-read endpoint is exposed.
-   Global search and help/contact actions likewise have no API contract; the nonfunctional top-bar
-   controls were removed rather than implying that they work.
+4. **Notification inbox UI** — backend list, unread-count, and mark-read endpoints are now available,
+   but this frontend has not wired an inbox UI. Global search and help/contact actions likewise have
+   no API contract; the nonfunctional top-bar controls remain removed.
 5. **Schedule response contract** — `GET /api/classes/my-schedule/?week_start=...` should return each
    assigned slot with course code/name, `day_of_week` (1=Monday through 7=Sunday), `start_time`,
    `end_time`, and `room`. The student schedule renders only returned slots.
 6. **Roster pagination** — the roster currently paginates the fetched result in the browser. Add DRF
    pagination and accept `search`, `department`, and page parameters if the result size requires
    server-side pagination.
-7. **Profile-photo upload** — no profile-photo upload/read endpoint is exposed by the current
-   frontend adapter. Provide authenticated upload and profile-read fields for admin, lecturer, and
-   student accounts if photos must persist across devices.
-8. **Manual attendance status** — `POST /api/attendance/sessions/:id/manual/` currently accepts only
-   `{student}` and the backend determines the result. The UI now matches that behavior. Add an
-   explicit permission-checked status/override contract if staff need to mark absent or excused.
+7. **Profile-photo UI** — authenticated profile-photo upload/read endpoints are available, but this
+   frontend has not wired them. Use the backend endpoint guide for the exact multipart field and
+   response shape.
+8. **Manual attendance status** — resolved in the 2026-10-04 backend update. The session UI now
+   sends `PRESENT`, `ABSENT`, or `EXCUSED` and can correct an existing record.
 9. **Student security and privacy actions** — the current API has no two-factor enrollment/status
    flow or personal-data export request endpoint. Those controls now explain the limitation instead
-   of toggling local state or showing a fake "queued" success. Student notification preferences can
-   be saved, but notification delivery/inbox behavior still needs backend support.
+   of toggling local state or showing a fake "queued" success. Notification inbox endpoints exist,
+   but two-factor enrollment, personal-data export, and preference-driven notification delivery
+   remain outside the frontend.
 
 The scan sends multipart `image` to
-`POST /api/attendance/sessions/:id/scan-classroom/`. For deterministic immediate feedback, return
-the matched student and confidence in the response (or guarantee the created record is immediately
-available from the session-records endpoint). The browser uses native camera APIs and Canvas to
-capture the frame; no facial-recognition frontend library is needed while recognition runs on the
-backend. A student only views the slots assigned to their enrolled courses; staff create those
-weekly slots through the course-management UI.
+`POST /api/attendance/sessions/:id/scan-classroom/`. The backend update confirms the response
+includes matched-student/confidence data and the completed write is immediately available to a
+subsequent GET. The browser uses native camera APIs and Canvas to capture the frame; no
+facial-recognition frontend library is needed while recognition runs on the backend. A student only
+views the slots assigned to their enrolled courses; staff create those weekly slots through the
+course-management UI.
 
 ---
 
@@ -176,7 +208,7 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 | POST | `/api/auth/users/` | `{username, email, first_name, last_name, role}` | admin only; backend provisions a temporary password |
 | GET | `/api/auth/users/?search=&role=&is_active=` | — | admin user management; backend accepts search, role and active-state filters |
 | POST | `/api/auth/change-password/` | `{old_password, new_password}` | wired in adapter, not yet surfaced in UI |
-| POST | `/api/auth/student/login/` | `{student_id}` | **DOES NOT EXIST — see Gap #1** |
+| POST | `/api/auth/student/login/` | — | not used; student login uses `/api/auth/login/` |
 
 ### Students
 
@@ -190,7 +222,8 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 | DELETE | `/api/students/:id/` | — | `204` |
 | POST | `/api/students/:id/flag/` | — | frontend calls this when an admin "flags" |
 | POST | `/api/students/:id/unflag/` | — | exposed in adapter |
-| POST | `/api/students/:id/enroll/` | multipart `image`, `retain_image?` | **admin/lecturer only today — see Gap #7** |
+| POST | `/api/students/:id/enroll/` | multipart `image`, `retain_image?` | admin/lecturer supervised enrollment |
+| POST | `/api/students/me/enroll/` | repeated multipart `frames` (3–8; frontend sends 6) | student self-enrollment while pending |
 
 ### Courses & schedule
 
@@ -221,11 +254,11 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 | GET | `/api/attendance/records/?session=:id` | — | per-session attendance |
 | GET | `/api/attendance/records/` | — | admin analytics feed |
 | GET | `/api/attendance/my-records/` | — | student attendance history — **see Gap #8** |
-| POST | `/api/attendance/sessions/:id/manual/` | `{student}` | manual mark; status/confidence not sent |
+| POST | `/api/attendance/sessions/:id/manual/` | `{student, status?}` | status is `PRESENT`, `ABSENT`, or `EXCUSED`; omission retains the original default |
 | GET | `/api/attendance/sessions/:id/summary/` | — | frontend also calls this wherever it used to "recompute session stats" |
-| POST | `/api/attendance/sessions/:id/scan-classroom/` | multipart `image` | admin session UI captures a JPEG frame and submits it |
+| POST | `/api/attendance/sessions/:id/scan-classroom/` | multipart `image` | admin session UI captures a JPEG frame; response includes matched student/confidence and subsequent GETs see completed writes |
 | POST | `/api/attendance/sessions/:id/checkin/` | multipart `frames` (≥3) | adapter method `checkIn()` (not yet wired) |
-| GET | `/api/attendance/audit-logs/` | — | adapter helper |
+| GET | `/api/attendance/audit-logs/` | — | one row per face-recognition scan/check-in attempt; empty until an attempt is made |
 
 ### Session review items
 
@@ -234,7 +267,6 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 | GET | `/api/attendance/review-items/?session=:id` | — | |
 | POST | `/api/attendance/review-items/:id/approve/` | — | |
 | POST | `/api/attendance/review-items/:id/dismiss/` | — | |
-| POST | `/api/attendance/review-items/` | `{...}` | kept for parity — **see Gap #9** |
 
 ### Settings
 
@@ -242,8 +274,19 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 |---|---|---|---|
 | GET | `/api/settings/:key/` | — | expects `{key, value, updated_at}`; **`value` is read as a JSON string and `JSON.parse`d — see Gap #2** |
 | POST | `/api/settings/` | `{key, value: "<stringified JSON>"}` | upsert |
+| GET | `/api/settings/health/` | — | admin-only; database, email, face-recognition model, checked-at and uptime status; wired on admin overview |
 | GET / PATCH | `/api/students/:id/settings/` | `{attendance_notifications?, security_alerts?, campus_announcements?, two_factor_enabled?}` | admin/lecturer view of a student |
 | GET / PATCH | `/api/students/me/settings/` | same body | student self view (StudentSettings.vue uses this) |
+
+### Notifications and profile
+
+| Method | Path | Sends | Notes |
+|---|---|---|---|
+| GET | `/api/notifications/` | — | paginated inbox; frontend UI not yet wired |
+| GET | `/api/notifications/unread-count/` | — | `{unread_count}`; frontend UI not yet wired |
+| POST | `/api/notifications/:id/mark-read/` | — | frontend UI not yet wired |
+| POST | `/api/notifications/mark-all-read/` | — | returns `{marked_read}`; frontend UI not yet wired |
+| GET / POST / PATCH | `/api/auth/profile/` | profile fields and authenticated photo upload | backend API is available; frontend adapter/UI not yet wired; refer to the backend endpoint guide for exact photo field and response shape |
 
 ### Support / requests
 
@@ -261,7 +304,7 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 | Method | Path |
 |---|---|
 | GET | `/api/dashboard/overview/` |
-| GET | `/api/analytics/trends/?months=<n>` |
+| GET | `/api/analytics/trends/?months=<n>` | returns rows with `{period, attendance_rate}`; consumed by admin analytics and overview |
 | GET | `/api/analytics/by-department/` |
 | GET | `/api/analytics/at-risk/?threshold=<n>` |
 
@@ -269,7 +312,7 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 
 | Method | Path | Notes |
 |---|---|---|
-| GET (SSE) | `/api/attendance/sessions/:id/events/` | `EventSource`; **DOES NOT EXIST — optional, see Gap #10** |
+| GET (SSE) | `/api/attendance/sessions/:id/events/` | not used; no SSE endpoint exists, so the adapter polls the session summary |
 
 ---
 
@@ -277,14 +320,9 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 
 Priority order.
 
-### Gap #1 — Student login has no endpoint (BLOCKER for the student portal)
-`StudentLogin.vue` collects **only a matric number** and the adapter calls
-`POST /api/auth/student/login/ {student_id}`, which the backend does not expose. Nothing student-side
-authenticates until this is resolved. Options:
-- **(a)** Add `POST /api/auth/student/login/` that accepts `{student_id}` and returns `{access, refresh}`
-  (e.g. passwordless / OTP / institutional SSO).
-- **(b)** Tell us students must use `username + password` via `/api/auth/login/` and we add a password
-  field to the student login screen.
+### Gap #1 — Student login (resolved)
+Students use `username + password` via `POST /api/auth/login/`; the frontend does not call a separate
+student-login endpoint.
 
 Please pick one.
 
@@ -316,16 +354,13 @@ The student pages (Overview, Schedule, Attendance, Support) call `GET /api/class
 queryset to the requesting student's enrollments for STUDENT role. The adapter falls back to
 `/api/classes/my-schedule/` only on `403`.
 
-### Gap #6 — `request_type` enum for support tickets
-The adapter sends `request_type: "OVERRIDE"` when a session is attached, otherwise `"GENERAL"`. Your doc
-only documents `OVERRIDE` (and says it requires `session`). Please give us the full valid enum,
-especially the value for a **non-override** ticket (missed attendance, biometric issue, technical). Also
-confirm whether non-override tickets can omit `session`.
+### Gap #6 — `request_type` enum for support tickets (resolved)
+The adapter sends `OVERRIDE` when a session is attached and `ISSUE` otherwise.
 
-### Gap #7 — Student self face-enrollment
-`StudentSettings.vue` has an "Add New Reference" button. There is no student-accessible enroll endpoint
-(`/api/students/:id/enroll/` is admin/lecturer + needs an image). It currently **no-ops**. Tell us the
-intended flow (kiosk only? a student-scoped enroll endpoint? a support request?).
+### Gap #7 — Student self face-enrollment (resolved)
+`StudentSettings.vue` captures six frames and calls `POST /api/students/me/enroll/`; the endpoint
+accepts 3–8 repeated `frames` fields. This is distinct from supervised staff enrollment, which sends
+a single `image` to `/api/students/:id/enroll/`.
 
 ### Gap #8 — `/api/attendance/my-records/` should carry course info
 Student attendance/telemetry views show the course name per record. If a record is just
@@ -333,21 +368,20 @@ Student attendance/telemetry views show the course name per record. If a record 
 (or a nested `session` with its course) on each item.
 
 ### Gap #9 — Manual creation of review items
-The adapter keeps `POST /api/attendance/review-items/` for parity, but assumes review items are created
-by the backend during recognition. Confirm there is no manual-create requirement (if there is, give us
-the body).
+The frontend no longer calls `POST /api/attendance/review-items/`; review items are created by the
+backend during recognition.
 
 ### Gap #10 — Realtime (optional)
-Live session attendance uses `EventSource` on `/api/attendance/sessions/:id/events/`. If you don't ship
-SSE/WebSockets, the frontend degrades to manual refresh — acceptable for now. If you do, emit the new
-attendance record (ideally with nested student) as the SSE `data` payload.
+The backend does not expose an SSE/WebSocket endpoint. The frontend polls
+`GET /api/attendance/sessions/:id/summary/` every five seconds; if a push channel is added later, the
+adapter's subscription helper can switch to it.
 
 ---
 
 ## 4. Frontend behavior that is intentionally unavailable
 
-- Live notification inbox, global search, and help/contact actions are not shown until an endpoint
-  contract exists.
+- Notification endpoints exist, but the inbox UI is not yet wired pending the exact notification
+  item shape. Global search and help/contact actions remain unavailable without an API contract.
 - Two-factor enrollment and personal-data export do not report success without backend endpoints.
 - The admin session scan uses `scan-classroom`; `checkIn` remains available for a student self-check-in
   flow if/when the product requires one.

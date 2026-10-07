@@ -37,7 +37,7 @@ function eventTime(log: any) {
   <section class="space-y-6">
     <div>
       <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">System Logs</h1>
-      <p class="mt-1.5 text-[15px] text-[#64748b]">Audit events returned by the backend.</p>
+      <p class="mt-1.5 text-[15px] text-[#64748b]">Face-recognition scan and check-in attempts recorded by the backend.</p>
     </div>
     <p v-if="loading" class="text-sm text-gray-500">Loading audit logs...</p>
     <p v-else-if="error" class="text-sm text-danger">{{ error }}</p>
@@ -53,7 +53,7 @@ function eventTime(log: any) {
           </tr>
         </tbody>
       </table>
-      <p v-if="!logs.length" class="p-6 text-center text-sm text-gray-500">No audit events returned.</p>
+      <p v-if="!logs.length" class="p-6 text-center text-sm text-gray-500">No scan or check-in attempts are available in this audit-log scope.</p>
     </article>
   </section>
 </template>

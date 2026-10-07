@@ -32,6 +32,7 @@ const handleSignOut = () => {
 </script>
 
 <template>
+  <NuxtLayout>
   <div>
     <!-- Session rehydrating after a reload -->
     <div v-if="!authReady" class="min-h-screen grid place-items-center bg-navy text-white">
@@ -146,4 +147,5 @@ const handleSignOut = () => {
 
     <ToastNotification :message="toast" />
   </div>
+  </NuxtLayout>
 </template>

@@ -17,6 +17,7 @@ const allRecords = ref<
     sessions: Session & { courses: any };
   })[]
 >([]);
+const attendanceTrends = ref<{ period: string; attendance_rate: number }[]>([]);
 const searchQuery = ref("");
 const departmentFilter = ref("All Departments");
 const loading = ref(true);
@@ -24,14 +25,22 @@ const error = ref("");
 
 onMounted(async () => {
   try {
-    const studentData = await api.getStudents();
+    const [studentData, sessions, records, trends] = await Promise.all([
+      api.getStudents(),
+      api.getAllSessions(),
+      api.getAttendanceRecords(),
+      api.getAttendanceTrends(6),
+    ]);
     students.value = studentData;
-
-    const sessions = await api.getAllSessions();
     allSessions.value = (sessions || []) as any;
-
-    const records = await api.getAttendanceRecords();
     allRecords.value = (records || []) as any;
+    attendanceTrends.value = trends
+      .filter((point: any) => typeof point?.period === "string")
+      .map((point: any) => ({
+        period: point.period,
+        attendance_rate: Number(point.attendance_rate),
+      }))
+      .filter((point) => Number.isFinite(point.attendance_rate));
   } catch (e: any) {
     error.value = e.message;
   } finally {
@@ -86,20 +95,10 @@ const deptData = computed(() => {
   }));
 });
 
-// Attendance records are check-ins, so show counts rather than an unsupported rate.
 const trendData = computed(() => {
-  const months: Record<string, number> = {};
-  for (const r of allRecords.value) {
-    if (!r.check_in_time) continue;
-    const month = new Date(r.check_in_time).toLocaleDateString("en-US", {
-      month: "short",
-      year: "numeric",
-    });
-    months[month] = (months[month] || 0) + 1;
-  }
-  return Object.entries(months).map(([month, count]) => ({
-    month,
-    count,
+  return attendanceTrends.value.map(({ period, attendance_rate }) => ({
+    period,
+    attendanceRate: attendance_rate,
   }));
 });
 
@@ -107,11 +106,9 @@ const trendData = computed(() => {
 const trendPath = computed(() => {
   if (trendData.value.length < 2) return "";
 
-  const max = Math.max(...trendData.value.map((item) => item.count), 1);
-
   const points = trendData.value.map((d, i) => ({
     x: 24 + i * (576 / Math.max(trendData.value.length - 1, 1)),
-    y: 230 - (d.count / max) * 180,
+    y: 230 - (d.attendanceRate / 100) * 180,
   }));
 
   let path = `M${points[0]!.x} ${points[0]!.y}`;
@@ -141,7 +138,7 @@ const trendAreaPath = computed(() => {
       <div>
         <h1 class="text-3xl tracking-tight">Attendance Analytics</h1>
         <p class="mt-1.5 text-gray-500">
-          Comprehensive overview of institutional attendance metrics.
+          Attendance rates returned by the backend over the last six months.
         </p>
       </div>
       <div class="flex gap-2.5 items-center">
@@ -192,7 +189,7 @@ const trendAreaPath = computed(() => {
           <div class="flex justify-between items-center">
             <h2 class="text-xl">Attendance Trends</h2>
             <span class="bg-gray-100 px-2 py-1 font-mono text-[11px]"
-              >CHECK-INS BY MONTH</span
+              >ATTENDANCE RATE (%)</span
             >
           </div>
           <div class="h-[280px] relative pt-6 pb-6 pl-9">
@@ -222,7 +219,7 @@ const trendAreaPath = computed(() => {
               v-if="trendData.length > 0"
               class="flex justify-between font-mono text-[11px] text-gray-600 px-0.5"
             >
-              <span v-for="d in trendData" :key="d.month">{{ d.month }}</span>
+              <span v-for="d in trendData" :key="d.period">{{ d.period }}</span>
             </div>
           </div>
         </article>
