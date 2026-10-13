@@ -1,0 +1,1 @@
+import{P as e,R as t,f as n}from"./D7rxMlvR.js";import{t as r}from"./BDNMzG2s.js";var i={},a={class:`min-h-screen flex bg-gray-50`};function o(r,i){return e(),n(`div`,a,[t(r.$slots,`default`)])}var s=r(i,[[`render`,o]]);export{s as default};
