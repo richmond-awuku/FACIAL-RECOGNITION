@@ -121,7 +121,7 @@ async function runCapture() {
   capturing.value = true
   captureError.value = ''
   try {
-    const total = 6
+    const total = 3
     const frames: Blob[] = []
     for (let i = 0; i < total; i++) {
       captureStatus.value = i === 2 ? 'Blink now — naturally' : `Hold still… ${i + 1} / ${total}`
