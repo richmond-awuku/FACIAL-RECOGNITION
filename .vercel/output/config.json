@@ -43,14 +43,6 @@
     },
     {
       "handle": "filesystem"
-    },
-    {
-      "src": "(?<__isr_route>/__nuxt_error)",
-      "dest": "/__fallback"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/__fallback"
     }
   ]
 }
