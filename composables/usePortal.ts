@@ -1,15 +1,7 @@
-import { ref, readonly, computed } from 'vue'
+import { readonly, computed } from 'vue'
 import { useApi } from '~/composables/useApi'
 
 type Portal = 'admin' | 'student'
-
-const portal = ref<Portal>('admin')
-const isAuthed = ref(false)
-const authReady = ref(false)
-const mustChangePassword = ref(false)
-const heldPassword = ref<string | null>(null) // temp password from this session's login, used to pre-fill the forced change
-const currentUser = ref<{ name: string; role: string; rawRole: string; id: string; email?: string } | null>(null)
-const currentStudent = ref<{ id: string; student_id: string; full_name: string; department: string; face_enrolled: boolean; attendance_rate: number } | null>(null)
 
 function mapAdminUser(me: any) {
   const rawRole = (me.role || '').toString().toUpperCase()
@@ -33,24 +25,31 @@ function mapStudent(data: any) {
   }
 }
 
-// A forced-password-change account is authenticated but every endpoint except
-// /api/auth/me/ and /api/auth/change-password/ returns 403 until it's done.
-function gateForcedChange(me: any, p: Portal) {
-  isAuthed.value = true
-  mustChangePassword.value = true
-  portal.value = p
-  currentUser.value = {
-    name: me.first_name ? `${me.first_name} ${me.last_name}` : me.username,
-    role: p === 'student' ? 'Student' : mapAdminUser(me).role,
-    rawRole: p === 'student' ? 'STUDENT' : mapAdminUser(me).rawRole,
-    id: (me.id ?? '').toString().slice(0, 8),
-    email: me.email,
-  }
-  currentStudent.value = null
-}
-
 export function usePortal() {
   const api = useApi()
+  const portal = useState<Portal>('portal', () => 'admin')
+  const isAuthed = useState('portal-is-authed', () => false)
+  const authReady = useState('portal-auth-ready', () => false)
+  const mustChangePassword = useState('portal-must-change-password', () => false)
+  const heldPassword = useState<string | null>('portal-held-password', () => null)
+  const currentUser = useState<{ name: string; role: string; rawRole: string; id: string; email?: string } | null>('portal-current-user', () => null)
+  const currentStudent = useState<{ id: string; student_id: string; full_name: string; department: string; face_enrolled: boolean; attendance_rate: number } | null>('portal-current-student', () => null)
+
+  // A forced-password-change account is authenticated but every endpoint except
+  // /api/auth/me/ and /api/auth/change-password/ returns 403 until it's done.
+  const gateForcedChange = (me: any, p: Portal) => {
+    isAuthed.value = true
+    mustChangePassword.value = true
+    portal.value = p
+    currentUser.value = {
+      name: me.first_name ? `${me.first_name} ${me.last_name}` : me.username,
+      role: p === 'student' ? 'Student' : mapAdminUser(me).role,
+      rawRole: p === 'student' ? 'STUDENT' : mapAdminUser(me).rawRole,
+      id: (me.id ?? '').toString().slice(0, 8),
+      email: me.email,
+    }
+    currentStudent.value = null
+  }
 
   const setPortal = (p: Portal) => {
     portal.value = p

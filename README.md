@@ -1,4 +1,4 @@
-# Nuxt 3 Minimal Starter
+# Facial Recognition Frontend
 
 Look at the [Nuxt 3 documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
 
@@ -25,18 +25,29 @@ Start the development server on http://localhost:3000
 npm run dev
 ```
 
-## Production
+## Production build
 
-Build the application for production:
+Build the server-rendered app for production:
 
 ```bash
 npm run build
 ```
 
-Locally preview production build:
+Locally preview the production build:
 
 ```bash
 npm run preview
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+## Deploy to Vercel
+
+1. Import this project (or its containing repository) into Vercel. Set the **Root Directory** to
+   `FACIAL-RECOGNITION` if the app is inside a larger repository.
+2. Use `npm run build` as the Build Command. The Vercel Nitro preset packages the Nuxt SSR app as a
+   serverless function.
+3. Add `NUXT_PUBLIC_BACKEND_URL` in the Vercel project's Environment Variables for Production and
+   Preview, with the value `https://facialattendance.duckdns.org`.
+4. Redeploy after changing the environment variable. Nuxt uses it as the public backend API URL.
+
+The backend must allow the deployed Vercel domain in its CORS configuration for API requests to
+work.

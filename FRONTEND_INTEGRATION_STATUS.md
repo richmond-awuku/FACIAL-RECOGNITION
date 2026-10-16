@@ -158,8 +158,8 @@ course-management UI.
   in the tree only as dead reference and should be considered deprecated.
 - Every component now talks to a single adapter: **`composables/useApi.ts`** → `useApi()`.
 - `composables/usePortal.ts` (login/session state) now calls `useApi()` for auth.
-- Base URL comes from `runtimeConfig.public.backendUrl` (env `VITE_BACKEND_URL`, default
-  `http://localhost:8000`). Set this in every environment.
+- Base URL comes from `runtimeConfig.public.backendUrl` (env `NUXT_PUBLIC_BACKEND_URL`, default
+  `https://facialattendance.duckdns.org`). Set this at build time in every environment.
 
 ### Auth/token behavior the frontend implements
 
@@ -395,4 +395,4 @@ adapter's subscription helper can switch to it.
 | `composables/useApi.ts` | the entire frontend↔backend contract; read this for exact calls |
 | `composables/usePortal.ts` | login flow + `currentUser` / `currentStudent` state |
 | `types/database.ts` | shapes the templates consume (post-normalization) |
-| `nuxt.config.ts` | `backendUrl` runtime config (`VITE_BACKEND_URL`) |
+| `nuxt.config.ts` | `backendUrl` runtime config (`NUXT_PUBLIC_BACKEND_URL`) |

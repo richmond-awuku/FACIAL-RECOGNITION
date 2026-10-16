@@ -1,7 +1,6 @@
-// Rehydrate the login session from localStorage tokens on a full page load /
-// refresh, before the app renders, so the user isn't bounced to the login
-// screen while a valid token is still on disk.
-export default defineNuxtPlugin(async () => {
+// localStorage is only available in the browser. Restore after hydration so
+// the server and initial client render use the same unauthenticated state.
+export default defineNuxtPlugin((nuxtApp) => {
   const { restoreSession } = usePortal()
-  await restoreSession()
+  nuxtApp.hook('app:mounted', restoreSession)
 })
