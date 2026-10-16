@@ -3988,7 +3988,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "8e38db4d-5958-46b5-afc6-d67f80493bef",
+    "buildId": "c7fe1db8-fa5f-43ae-99e4-b8adb33f29e2",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4017,7 +4017,7 @@ const _inlineRuntimeConfig = {
     }
   },
   "public": {
-    "backendUrl": "https://facial-recorgnition-and-attendance-system.onrender.com"
+    "backendUrl": "https://facialattendance.duckdns.org"
   }
 };
 const envOptions = {
@@ -4062,107 +4062,6 @@ new Proxy(/* @__PURE__ */ Object.create(null), {
     }
     return void 0;
   }
-});
-
-function createContext(opts = {}) {
-  let currentInstance;
-  let isSingleton = false;
-  const checkConflict = (instance) => {
-    if (currentInstance && currentInstance !== instance) {
-      throw new Error("Context conflict");
-    }
-  };
-  let als;
-  if (opts.asyncContext) {
-    const _AsyncLocalStorage = opts.AsyncLocalStorage || globalThis.AsyncLocalStorage;
-    if (_AsyncLocalStorage) {
-      als = new _AsyncLocalStorage();
-    } else {
-      console.warn("[unctx] `AsyncLocalStorage` is not provided.");
-    }
-  }
-  const _getCurrentInstance = () => {
-    if (als) {
-      const instance = als.getStore();
-      if (instance !== void 0) {
-        return instance;
-      }
-    }
-    return currentInstance;
-  };
-  return {
-    use: () => {
-      const _instance = _getCurrentInstance();
-      if (_instance === void 0) {
-        throw new Error("Context is not available");
-      }
-      return _instance;
-    },
-    tryUse: () => {
-      return _getCurrentInstance();
-    },
-    set: (instance, replace) => {
-      if (!replace) {
-        checkConflict(instance);
-      }
-      currentInstance = instance;
-      isSingleton = true;
-    },
-    unset: () => {
-      currentInstance = void 0;
-      isSingleton = false;
-    },
-    call: (instance, callback) => {
-      checkConflict(instance);
-      currentInstance = instance;
-      try {
-        return als ? als.run(instance, callback) : callback();
-      } finally {
-        if (!isSingleton) {
-          currentInstance = void 0;
-        }
-      }
-    },
-    async callAsync(instance, callback) {
-      currentInstance = instance;
-      const onRestore = () => {
-        currentInstance = instance;
-      };
-      const onLeave = () => currentInstance === instance ? onRestore : void 0;
-      asyncHandlers.add(onLeave);
-      try {
-        const r = als ? als.run(instance, callback) : callback();
-        if (!isSingleton) {
-          currentInstance = void 0;
-        }
-        return await r;
-      } finally {
-        asyncHandlers.delete(onLeave);
-      }
-    }
-  };
-}
-function createNamespace(defaultOpts = {}) {
-  const contexts = {};
-  return {
-    get(key, opts = {}) {
-      if (!contexts[key]) {
-        contexts[key] = createContext({ ...defaultOpts, ...opts });
-      }
-      return contexts[key];
-    }
-  };
-}
-const _globalThis = typeof globalThis !== "undefined" ? globalThis : typeof self !== "undefined" ? self : typeof global !== "undefined" ? global : {};
-const globalKey = "__unctx__";
-const defaultNamespace = _globalThis[globalKey] || (_globalThis[globalKey] = createNamespace());
-const getContext = (key, opts = {}) => defaultNamespace.get(key, opts);
-const asyncHandlersKey = "__unctx_async_handlers__";
-const asyncHandlers = _globalThis[asyncHandlersKey] || (_globalThis[asyncHandlersKey] = /* @__PURE__ */ new Set());
-
-getContext("nitro-app", {
-  asyncContext: false,
-  AsyncLocalStorage: void 0
 });
 
 function isPathInScope(pathname, base) {
@@ -4316,7 +4215,7 @@ var error_default = async function errorhandler(error, event, { defaultHandler }
 	}).catch(() => null);
 	if (event.handled) return;
 	if (!res) {
-		const { template } = await import('../_/error-500.mjs');
+		const { template } = await import('./error-500.mjs');
 		setResponseHeader(event, "Content-Type", "text/html;charset=UTF-8");
 		return send(event, template(errorObject));
 	}
@@ -4420,12 +4319,12 @@ const plugins = [
 
 const _SxA8c9 = defineEventHandler(() => {});
 
-const _lazy_EK2gk0 = () => import('../routes/renderer.mjs');
+const _lazy_EaLmRJ = () => import('../routes/renderer.mjs');
 
 const handlers = [
-  { route: '/__nuxt_error', handler: _lazy_EK2gk0, lazy: true, middleware: false, method: undefined },
+  { route: '/__nuxt_error', handler: _lazy_EaLmRJ, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: _SxA8c9, lazy: false, middleware: false, method: undefined },
-  { route: '/**', handler: _lazy_EK2gk0, lazy: true, middleware: false, method: undefined }
+  { route: '/**', handler: _lazy_EaLmRJ, lazy: true, middleware: false, method: undefined }
 ];
 
 function createNitroApp() {
@@ -4481,17 +4380,17 @@ function createNitroApp() {
       event.captureError = (error, context) => {
         captureError(error, { event, ...context });
       };
-      await nitroApp$1.hooks.callHook("request", event).catch((error) => {
+      await nitroApp.hooks.callHook("request", event).catch((error) => {
         captureError(error, { event, tags: ["request"] });
       });
     },
     onBeforeResponse: async (event, response) => {
-      await nitroApp$1.hooks.callHook("beforeResponse", event, response).catch((error) => {
+      await nitroApp.hooks.callHook("beforeResponse", event, response).catch((error) => {
         captureError(error, { event, tags: ["request", "response"] });
       });
     },
     onAfterResponse: async (event, response) => {
-      await nitroApp$1.hooks.callHook("afterResponse", event, response).catch((error) => {
+      await nitroApp.hooks.callHook("afterResponse", event, response).catch((error) => {
         captureError(error, { event, tags: ["request", "response"] });
       });
     }
@@ -4563,11 +4462,11 @@ function runNitroPlugins(nitroApp2) {
     }
   }
 }
-const nitroApp$1 = createNitroApp();
+const nitroApp = createNitroApp();
 function useNitroApp() {
-  return nitroApp$1;
+  return nitroApp;
 }
-runNitroPlugins(nitroApp$1);
+runNitroPlugins(nitroApp);
 
 function defineRenderHandler(render) {
   const runtimeConfig = useRuntimeConfig();
@@ -4608,37 +4507,5 @@ function defineRenderHandler(render) {
   });
 }
 
-const ISR_URL_PARAM = "__isr_route";
-
-const nitroApp = useNitroApp();
-const handler = toNodeListener(nitroApp.h3App);
-const listener = function(req, res) {
-  const isrRoute = req.headers["x-now-route-matches"];
-  if (isrRoute) {
-    const { [ISR_URL_PARAM]: url } = parseQuery(isrRoute);
-    if (url && typeof url === "string") {
-      const routeRules = getRouteRulesForPath(url);
-      if (routeRules.isr) {
-        req.url = url;
-      }
-    }
-  } else {
-    const queryIndex = req.url.indexOf("?");
-    const urlQueryIndex = queryIndex === -1 ? -1 : req.url.indexOf(`${ISR_URL_PARAM}=`, queryIndex);
-    if (urlQueryIndex !== -1) {
-      const { [ISR_URL_PARAM]: url, ...params } = parseQuery(
-        req.url.slice(queryIndex)
-      );
-      if (url && typeof url === "string") {
-        const routeRules = getRouteRulesForPath(url);
-        if (routeRules.isr) {
-          req.url = withQuery(url, params);
-        }
-      }
-    }
-  }
-  return handler(req, res);
-};
-
-export { getResponseStatus as a, getQuery as b, createError$1 as c, defineRenderHandler as d, encodePath as e, destr as f, getResponseStatusText as g, getRouteRules as h, joinURL as i, joinRelativeURL as j, useNitroApp as k, listener as l, useRuntimeConfig as u };
+export { useRuntimeConfig as a, getResponseStatusText as b, getResponseStatus as c, defineRenderHandler as d, encodePath as e, getQuery as f, getRouteRulesForPath as g, createError$1 as h, destr as i, joinRelativeURL as j, getRouteRules as k, joinURL as l, parseQuery as p, toNodeListener as t, useNitroApp as u, withQuery as w };
 //# sourceMappingURL=nitro.mjs.map

@@ -13,7 +13,7 @@ export default defineNuxtConfig({
     public: {
       backendUrl:
         process.env.NUXT_PUBLIC_BACKEND_URL ||
-        "https://facial-recorgnition-and-attendance-system.onrender.com",
+        "https://facialattendance.duckdns.org",
     },
   },
 });
