@@ -14,7 +14,7 @@ This section supersedes older status notes and gap statements below where they c
 update supplied on 2026-10-04 is not checked into this frontend workspace as `API_ENDPOINTS.md`, so
 the response details here are limited to that update's confirmed contract.
 
-- **Enrollment:** student self-enrollment sends three compressed repeated multipart `frames` fields. The
+- **Enrollment:** student self-enrollment sends eight compressed repeated multipart `frames` fields. The
   backend accepts 3–8 frames. Admin/lecturer supervised enrollment is a separate
   route and still sends a single `image` field.
 - **Attendance trends:** admin analytics and the system overview now consume
@@ -223,7 +223,7 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 | POST | `/api/students/:id/flag/` | — | frontend calls this when an admin "flags" |
 | POST | `/api/students/:id/unflag/` | — | exposed in adapter |
 | POST | `/api/students/:id/enroll/` | multipart `image`, `retain_image?` | admin/lecturer supervised enrollment |
-| POST | `/api/students/me/enroll/` | repeated multipart `frames` (3–8; frontend sends 3) | student self-enrollment while pending |
+| POST | `/api/students/me/enroll/` | repeated multipart `frames` (3–8; frontend sends 8) | student self-enrollment while pending |
 
 ### Courses & schedule
 

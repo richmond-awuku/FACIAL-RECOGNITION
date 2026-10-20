@@ -121,20 +121,14 @@ async function runCapture() {
   capturing.value = true
   captureError.value = ''
   try {
-    const total = 3
+    const total = 8
     const frames: Blob[] = []
     for (let i = 0; i < total; i++) {
-      if (i === 1) {
-        captureStatus.value = 'Blink now — naturally'
-        await nextTick()
-        await cam.wait(500)
-      } else {
-        captureStatus.value = `Hold still… ${i + 1} / ${total}`
-        await nextTick()
-      }
+      captureStatus.value = `Blink naturally during capture… ${i + 1} / ${total}`
+      await nextTick()
       const blob = await cam.grabFrame(0.75, 640)
       if (blob) frames.push(blob)
-      if (i < total - 1) await cam.wait(500)
+      if (i < total - 1) await cam.wait(200)
     }
     if (frames.length < 3) {
       captureError.value = 'Could not capture enough frames. Try again in better lighting.'
@@ -223,7 +217,7 @@ async function runCapture() {
           <button class="text-gray-400 hover:text-ink text-2xl leading-none" @click="closeCapture">&times;</button>
         </div>
         <div class="p-6 space-y-4">
-          <p class="text-sm text-gray-600">Face the camera in good lighting. When you see <strong>“Blink now”</strong>, blink once, naturally — this is the liveness check.</p>
+          <p class="text-sm text-gray-600">Face the camera in good lighting. When capture starts, blink once naturally during the short burst and keep facing the camera.</p>
           <div class="relative rounded-md overflow-hidden bg-black aspect-[4/3]">
             <video ref="videoRef" autoplay playsinline muted class="w-full h-full object-cover"></video>
             <div v-if="captureStatus" class="absolute inset-x-0 bottom-0 bg-navy/70 text-white text-center py-2 font-mono text-xs">{{ captureStatus }}</div>
