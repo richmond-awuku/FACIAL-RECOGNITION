@@ -53,13 +53,14 @@ export function useCamera() {
     ready.value = false
   }
 
-  function grabFrame(quality = 0.9): Promise<Blob | null> {
+  function grabFrame(quality = 0.9, maxWidth?: number): Promise<Blob | null> {
     return new Promise((resolve) => {
       const v = videoRef.value
       if (!v || !v.videoWidth) return resolve(null)
       const canvas = document.createElement('canvas')
-      canvas.width = v.videoWidth
-      canvas.height = v.videoHeight
+      const scale = maxWidth && v.videoWidth > maxWidth ? maxWidth / v.videoWidth : 1
+      canvas.width = Math.round(v.videoWidth * scale)
+      canvas.height = Math.round(v.videoHeight * scale)
       const ctx = canvas.getContext('2d')
       if (!ctx) return resolve(null)
       ctx.drawImage(v, 0, 0, canvas.width, canvas.height)

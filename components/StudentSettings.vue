@@ -124,10 +124,17 @@ async function runCapture() {
     const total = 3
     const frames: Blob[] = []
     for (let i = 0; i < total; i++) {
-      captureStatus.value = i === 2 ? 'Blink now — naturally' : `Hold still… ${i + 1} / ${total}`
-      const blob = await cam.grabFrame()
+      if (i === 1) {
+        captureStatus.value = 'Blink now — naturally'
+        await nextTick()
+        await cam.wait(500)
+      } else {
+        captureStatus.value = `Hold still… ${i + 1} / ${total}`
+        await nextTick()
+      }
+      const blob = await cam.grabFrame(0.75, 640)
       if (blob) frames.push(blob)
-      await cam.wait(450)
+      if (i < total - 1) await cam.wait(500)
     }
     if (frames.length < 3) {
       captureError.value = 'Could not capture enough frames. Try again in better lighting.'
@@ -143,11 +150,17 @@ async function runCapture() {
     closeCapture()
   } catch (err: any) {
     const status = err?.status
-    if (status === 401) captureError.value = 'Liveness check failed — blink naturally during capture and try again.'
-    else if (status === 422) captureError.value = 'A face was not detected in every frame. Center your face and retry.'
+    const detail = typeof err?.message === 'string' ? err.message : ''
+    if (status === 401) captureError.value = 'Your session has expired. Sign in again before enrolling.'
+    else if (status === 422 && /liveness|blink/i.test(detail)) {
+      captureError.value = `${detail} Blink once naturally when prompted and try again.`
+    } else if (status === 422 && /face|detect/i.test(detail)) {
+      captureError.value = detail || 'A face was not detected in every frame. Center your face and retry.'
+    } else if (status === 422) captureError.value = detail || 'Enrollment could not be verified. Center your face and try again.'
     else if (status === 403) captureError.value = err?.message || 'Self-enrollment is closed for this account. Submit a re-enrollment request instead.'
     else if (status === 400) captureError.value = err?.message || 'Not enough valid frames. Try again.'
     else if (status === 404) captureError.value = 'No student profile is linked to this account.'
+    else if (status === 429) captureError.value = 'Too many enrollment attempts. Wait a minute before trying again.'
     else captureError.value = err?.message || 'Enrollment failed. Try again.'
     capturing.value = false
   }

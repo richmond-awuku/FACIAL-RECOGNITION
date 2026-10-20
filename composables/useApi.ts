@@ -468,7 +468,7 @@ export function useApi() {
     });
   }
   async function enrollMyFace(formData: FormData) {
-    // Student self-enroll: multipart `frames` (>=3), liveness-checked, once while PENDING.
+    // Student self-enroll: 3-8 multipart `frames`, liveness-checked, once while PENDING.
     return call("/api/students/me/enroll/", { method: "POST", body: formData });
   }
 

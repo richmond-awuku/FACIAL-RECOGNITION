@@ -14,8 +14,8 @@ This section supersedes older status notes and gap statements below where they c
 update supplied on 2026-10-04 is not checked into this frontend workspace as `API_ENDPOINTS.md`, so
 the response details here are limited to that update's confirmed contract.
 
-- **Enrollment:** student self-enrollment already sends six repeated multipart `frames` fields. The
-  backend accepts 3–8 frames; six is within range. Admin/lecturer supervised enrollment is a separate
+- **Enrollment:** student self-enrollment sends three compressed repeated multipart `frames` fields. The
+  backend accepts 3–8 frames. Admin/lecturer supervised enrollment is a separate
   route and still sends a single `image` field.
 - **Attendance trends:** admin analytics and the system overview now consume
   `GET /api/analytics/trends/` fields `period` and `attendance_rate` rather than deriving monthly
@@ -70,7 +70,7 @@ Round 2 also wired every remaining frontend-only gap the backend flagged as "not
 problem":
 
 - **Student self-enroll capture UI** — `StudentSettings.vue` branches on `face_enrolled`: a
-  **PENDING** student gets a camera modal that captures a 6-frame burst (with a "blink now" prompt
+  **PENDING** student gets a camera modal that captures a compressed 3-frame burst (with a "blink now" prompt
   for liveness) → `POST /api/students/me/enroll/` via `api.enrollMyFace()`, then refreshes the
   profile (now shows Verified, per backend confirmation). A **VERIFIED** student's button files a
   `BIOMETRIC_REENROLLMENT` support request instead. All five error codes (400/401/403/404/422)
@@ -223,7 +223,7 @@ Paths are exact. "Sends" = request body the frontend transmits. All JSON unless 
 | POST | `/api/students/:id/flag/` | — | frontend calls this when an admin "flags" |
 | POST | `/api/students/:id/unflag/` | — | exposed in adapter |
 | POST | `/api/students/:id/enroll/` | multipart `image`, `retain_image?` | admin/lecturer supervised enrollment |
-| POST | `/api/students/me/enroll/` | repeated multipart `frames` (3–8; frontend sends 6) | student self-enrollment while pending |
+| POST | `/api/students/me/enroll/` | repeated multipart `frames` (3–8; frontend sends 3) | student self-enrollment while pending |
 
 ### Courses & schedule
 
