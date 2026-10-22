@@ -168,6 +168,7 @@ async function runCapture() {
       <button class="btn-dark" :disabled="saving || loading" @click="saveSettings">{{ saving ? 'Saving...' : 'Save Changes' }}</button>
     </div>
     <p v-if="error" class="border border-red-200 bg-red-50 text-danger rounded-md px-4 py-3 text-sm">{{ error }}</p>
+    <ProfileImageUpload />
     <div v-if="loading" class="card p-8 text-gray-500">Loading account settings...</div>
     <div v-else class="grid lg:grid-cols-2 gap-6">
       <div class="space-y-6">

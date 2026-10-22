@@ -210,6 +210,7 @@ async function saveSettings() {
     >
       {{ error }}
     </p>
+    <ProfileImageUpload />
     <div v-if="loading" class="card p-8 text-gray-500">
       Loading system settings...
     </div>

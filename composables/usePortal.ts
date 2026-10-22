@@ -10,6 +10,7 @@ function mapAdminUser(me: any) {
     role: rawRole === 'ADMIN' ? 'System Admin' : rawRole === 'LECTURER' ? 'Lecturer' : me.role,
     rawRole,
     id: (me.id ?? '').toString().slice(0, 8),
+    imageKey: me.id != null ? `user-${me.id}` : `email-${me.email || me.username}`,
     email: me.email,
   }
 }
@@ -32,8 +33,32 @@ export function usePortal() {
   const authReady = useState('portal-auth-ready', () => false)
   const mustChangePassword = useState('portal-must-change-password', () => false)
   const heldPassword = useState<string | null>('portal-held-password', () => null)
-  const currentUser = useState<{ name: string; role: string; rawRole: string; id: string; email?: string } | null>('portal-current-user', () => null)
+  const currentUser = useState<{ name: string; role: string; rawRole: string; id: string; imageKey?: string; email?: string } | null>('portal-current-user', () => null)
   const currentStudent = useState<{ id: string; student_id: string; full_name: string; department: string; face_enrolled: boolean; attendance_rate: number } | null>('portal-current-student', () => null)
+  const profileImage = useState<string | null>('portal-profile-image', () => null)
+
+  const setCurrentUser = (user: typeof currentUser.value) => {
+    currentUser.value = user
+    try {
+      profileImage.value = user?.imageKey
+        ? localStorage.getItem(`profile-image:${user.imageKey}`)
+        : null
+    } catch {
+      profileImage.value = null
+    }
+  }
+
+  const setProfileImage = (image: string | null) => {
+    const imageKey = currentUser.value?.imageKey
+    if (!imageKey) throw new Error('Unable to identify the current account.')
+    try {
+      if (image) localStorage.setItem(`profile-image:${imageKey}`, image)
+      else localStorage.removeItem(`profile-image:${imageKey}`)
+      profileImage.value = image
+    } catch {
+      throw new Error('Could not save this image in browser storage.')
+    }
+  }
 
   // A forced-password-change account is authenticated but every endpoint except
   // /api/auth/me/ and /api/auth/change-password/ returns 403 until it's done.
@@ -41,13 +66,14 @@ export function usePortal() {
     isAuthed.value = true
     mustChangePassword.value = true
     portal.value = p
-    currentUser.value = {
+    setCurrentUser({
       name: me.first_name ? `${me.first_name} ${me.last_name}` : me.username,
       role: p === 'student' ? 'Student' : mapAdminUser(me).role,
       rawRole: p === 'student' ? 'STUDENT' : mapAdminUser(me).rawRole,
       id: (me.id ?? '').toString().slice(0, 8),
+      imageKey: me.id != null ? `user-${me.id}` : `username-${me.username}`,
       email: me.email,
-    }
+    })
     currentStudent.value = null
   }
 
@@ -59,12 +85,14 @@ export function usePortal() {
     portal.value = 'student'
     const data = await api.getMyStudentProfile().catch(() => null)
     if (data) currentStudent.value = mapStudent(data)
-    currentUser.value = {
+    setCurrentUser({
       name: me.first_name ? `${me.first_name} ${me.last_name}` : me.username || data?.full_name,
       role: 'Student',
       rawRole: 'STUDENT',
       id: String(currentStudent.value?.student_id || me.username || '').slice(-2),
-    }
+      imageKey: me.id != null ? `user-${me.id}` : `username-${me.username}`,
+      email: me.email,
+    })
     return data
   }
 
@@ -79,7 +107,7 @@ export function usePortal() {
       }
       isAuthed.value = true
       portal.value = 'admin'
-      currentUser.value = mapAdminUser(me)
+      setCurrentUser(mapAdminUser(me))
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err?.payload?.detail || err?.message || 'Login failed' }
@@ -142,7 +170,7 @@ export function usePortal() {
         await hydrateStudent(me)
       } else {
         portal.value = 'admin'
-        currentUser.value = mapAdminUser(me)
+        setCurrentUser(mapAdminUser(me))
       }
       isAuthed.value = true
       return { success: true }
@@ -196,11 +224,11 @@ export function usePortal() {
         await hydrateStudent(me)
       } else {
         portal.value = 'admin'
-        currentUser.value = mapAdminUser(me)
+        setCurrentUser(mapAdminUser(me))
       }
     } catch {
       isAuthed.value = false
-      currentUser.value = null
+      setCurrentUser(null)
       currentStudent.value = null
       mustChangePassword.value = false
     } finally {
@@ -211,7 +239,7 @@ export function usePortal() {
   const logout = () => {
     try { api.logout() } catch (e) { /* ignore */ }
     isAuthed.value = false
-    currentUser.value = null
+    setCurrentUser(null)
     currentStudent.value = null
     mustChangePassword.value = false
     heldPassword.value = null
@@ -224,6 +252,7 @@ export function usePortal() {
     mustChangePassword: readonly(mustChangePassword),
     needsCurrentPassword: computed(() => !heldPassword.value),
     currentUser: readonly(currentUser),
+    profileImage: readonly(profileImage),
     currentStudent: readonly(currentStudent),
     isAdmin: computed(() => currentUser.value?.rawRole === 'ADMIN'),
     isLecturer: computed(() => currentUser.value?.rawRole === 'LECTURER'),
@@ -233,6 +262,7 @@ export function usePortal() {
     studentLogin,
     completePasswordChange,
     refreshCurrentStudent,
+    setProfileImage,
     restoreSession,
     logout,
   }

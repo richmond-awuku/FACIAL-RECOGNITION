@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { usePortal } from '~/composables/usePortal'
+
+const profileUploader = ref<{ openPicker: () => void } | null>(null)
 
 const props = defineProps<{
   activeView?: string
@@ -11,7 +13,7 @@ const emit = defineEmits<{
   signOut: []
 }>()
 
-const { portal, currentUser, isLecturer, logout } = usePortal()
+const { portal, currentUser, profileImage, isLecturer, logout } = usePortal()
 const userInitials = computed(() => currentUser.value?.name?.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'U')
 
 const adminNav = [
@@ -109,14 +111,16 @@ const handleSignOut = () => {
         ⇥ <span class="hidden sm:inline">Sign Out</span>
       </button>
       <div class="mt-5 flex items-center justify-center gap-3 border-t border-navy-600 pt-4 sm:justify-start">
-        <div class="w-8 h-8 rounded-full bg-cyan-light flex items-center justify-center text-[10px] font-bold text-navy">
-          {{ userInitials }}
-        </div>
+        <button type="button" class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-cyan-light text-[10px] font-bold text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan" aria-label="Upload profile picture" title="Upload profile picture" @click="profileUploader?.openPicker()">
+          <img v-if="profileImage" :src="profileImage" alt="" class="h-full w-full object-cover" />
+          <span v-else>{{ userInitials }}</span>
+        </button>
         <div class="hidden min-w-0 sm:block">
           <strong class="block truncate text-sm">{{ currentUser?.name || currentUser?.email || 'User' }}</strong>
           <small class="mt-0.5 block truncate font-mono text-[10px] text-gray-400">{{ currentUser?.role || '' }}</small>
         </div>
       </div>
+      <ProfileImageUpload ref="profileUploader" compact />
     </div>
   </aside>
 </template>
