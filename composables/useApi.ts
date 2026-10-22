@@ -182,11 +182,12 @@ function normAttendance(r: any): any {
   const sessionObj = r.session && typeof r.session === "object";
   const students = studentObj
     ? normStudent(r.student)
-    : r.student_name || r.student_id_number
+    : r.student_name || r.student_full_name || r.student_id_number
       ? normStudent({
           id: r.student,
+          full_name: r.student_full_name,
           first_name: r.student_name,
-          student_id: r.student_id_number,
+          student_id: r.student_id_number ?? r.matric_number,
         })
       : undefined;
   const sessions = sessionObj
@@ -203,12 +204,12 @@ function normAttendance(r: any): any {
   return {
     ...r,
     id: r.id,
-    student_id: studentObj ? r.student.id : r.student,
+    student_id: studentObj ? r.student.id : r.student ?? r.student_id ?? r.student_id_number,
     session_id: sessionObj ? r.session.id : r.session,
     status: ATTENDANCE_STATUS[String(r.status ?? "PRESENT").toUpperCase()] ??
       r.status ??
       "Present",
-    confidence_score: r.confidence_score ?? null,
+    confidence_score: r.confidence_score ?? r.confidence ?? null,
     check_in_time: r.check_in_time ?? r.timestamp ?? r.created_at ?? null,
     created_at: r.created_at ?? r.timestamp ?? null,
     students,

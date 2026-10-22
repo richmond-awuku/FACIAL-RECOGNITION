@@ -36,7 +36,20 @@ onMounted(async () => {
         const rightTime = new Date(right.check_in_time || right.created_at || 0).getTime();
         return rightTime - leftTime;
       })
-      .slice(0, 5);
+      .slice(0, 5)
+      .map((record) => {
+        const student = record.students || studentData.find((candidate) =>
+          String(candidate.id) === String(record.student_id) ||
+          candidate.student_id === String(record.student_id),
+        );
+        return {
+          ...record,
+          students: student || {
+            full_name: record.student_full_name || record.student_name || record.student?.full_name,
+            student_id: record.student_id_number || record.matric_number || record.student?.student_id,
+          },
+        };
+      });
     const today = new Date().toLocaleDateString();
     todayCheckIns.value = attendanceRecords.filter((record) => {
       const timestamp = record.check_in_time || record.created_at;
@@ -172,7 +185,10 @@ const formatConfidence = (score: number | null) => {
           <tbody>
             <tr v-for="record in recentRecords" :key="record.id" class="activity-row">
               <td>
-                <span class="inline-block h-2.5 w-2.5 rounded-full" :class="record.status === 'Present' ? 'bg-[#2fb3d4]' : 'bg-[#94a3b8]'" />
+                <span class="inline-flex items-center gap-2">
+                  <span class="inline-block h-2.5 w-2.5 rounded-full" :class="record.status === 'Present' ? 'bg-[#2fb3d4]' : 'bg-[#94a3b8]'" />
+                  <span class="text-xs font-medium">{{ record.status || 'Unknown' }}</span>
+                </span>
               </td>
               <td>
                 <div class="flex items-center gap-3">
