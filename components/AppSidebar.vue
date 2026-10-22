@@ -1,65 +1,83 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { usePortal } from '~/composables/usePortal'
+import { computed, ref } from "vue";
+import { usePortal } from "~/composables/usePortal";
 
-const profileUploader = ref<{ openPicker: () => void } | null>(null)
+const profileUploader = ref<{ openPicker: () => void } | null>(null);
 
 const props = defineProps<{
-  activeView?: string
-}>()
+  activeView?: string;
+}>();
 
 const emit = defineEmits<{
-  navigate: [view: string]
-  signOut: []
-}>()
+  navigate: [view: string];
+  signOut: [];
+}>();
 
-const { portal, currentUser, profileImage, isLecturer, logout } = usePortal()
-const userInitials = computed(() => currentUser.value?.name?.split(/\s+/).filter(Boolean).map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'U')
+const { portal, currentUser, profileImage, isLecturer, logout } = usePortal();
+const userInitials = computed(
+  () =>
+    currentUser.value?.name
+      ?.split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "U",
+);
 
 const adminNav = [
-  { id: 'overview', label: 'Overview', icon: '▦' },
-  { id: 'user-management', label: 'User Management', icon: '♙' },
-  { id: 'class-management', label: 'Class Management', icon: '❏' },
-  { id: 'roster', label: 'Student Roster', icon: '♙' },
-  { id: 'analytics', label: 'Analytics', icon: '⌁' },
-  { id: 'logs', label: 'Attendance Logs', icon: '▤' },
-  { id: 'audit-logs', label: 'System Audit', icon: '⌕' },
-  { id: 'reports', label: 'Reports', icon: '▥' },
-]
+  { id: "overview", label: "Overview", icon: "▦" },
+  { id: "user-management", label: "User Management", icon: "♙" },
+  { id: "class-management", label: "Class Management", icon: "❏" },
+  { id: "roster", label: "Student Roster", icon: "♙" },
+  { id: "analytics", label: "Analytics", icon: "⌁" },
+  { id: "logs", label: "Attendance Logs", icon: "▤" },
+  { id: "audit-logs", label: "System Audit", icon: "⌕" },
+  { id: "reports", label: "Reports", icon: "▥" },
+];
 
 const lecturerNav = [
-  { id: 'overview', label: 'Overview', icon: '▦' },
-  { id: 'sessions', label: 'Sessions', icon: '▣' },
-  { id: 'courses', label: 'Courses', icon: '❏' },
-  { id: 'roster', label: 'Student Roster', icon: '♙' },
-  { id: 'analytics', label: 'Analytics', icon: '⌁' },
-]
+  { id: "overview", label: "Overview", icon: "▦" },
+  { id: "sessions", label: "Sessions", icon: "▣" },
+  { id: "courses", label: "Courses", icon: "❏" },
+  { id: "roster", label: "Student Roster", icon: "♙" },
+  { id: "analytics", label: "Analytics", icon: "⌁" },
+];
 
 const studentNav = [
-  { id: 'overview', label: 'Overview', icon: '▦' },
-  { id: 'attendance', label: 'My Attendance', icon: '♢' },
-  { id: 'schedule', label: 'Schedule', icon: '□' },
-  { id: 'support', label: 'Support', icon: '✦' },
-]
+  { id: "overview", label: "Overview", icon: "▦" },
+  { id: "attendance", label: "My Attendance", icon: "♢" },
+  { id: "schedule", label: "Schedule", icon: "□" },
+  { id: "support", label: "Support", icon: "✦" },
+];
 
 const navItems = computed(() => {
-  if (portal.value === 'student') return studentNav
-  return isLecturer.value ? lecturerNav : adminNav
-})
+  if (portal.value === "student") return studentNav;
+  return isLecturer.value ? lecturerNav : adminNav;
+});
 
-const handleNav = (id: string) => emit('navigate', id)
+const handleNav = (id: string) => emit("navigate", id);
 const handleSignOut = () => {
-  logout()
-  emit('signOut')
-}
+  logout();
+  emit("signOut");
+};
 </script>
 
 <template>
-  <aside class="flex min-h-screen w-[64px] flex-shrink-0 flex-col bg-navy text-white sm:w-[220px] lg:w-[266px]">
+  <aside
+    class="flex min-h-screen w-[64px] flex-shrink-0 flex-col bg-navy text-white sm:w-[220px] lg:w-[266px]"
+  >
     <!-- Brand -->
-    <div v-if="portal === 'admin'" class="border-b border-navy-600 px-2 py-5 sm:px-6 sm:py-7">
-      <strong class="hidden text-3xl leading-tight tracking-tight sm:block">SecureCheck<br />AI</strong>
-      <span class="hidden text-sm text-gray-400 sm:mt-1.5 sm:block">{{ isLecturer ? 'Lecturer Dashboard' : 'Admin Dashboard' }}</span>
+    <div
+      v-if="portal === 'admin'"
+      class="border-b border-navy-600 px-2 py-5 sm:px-6 sm:py-7"
+    >
+      <strong class="hidden text-3xl leading-tight tracking-tight sm:block"
+        >SecureCheck<br />AI</strong
+      >
+      <span class="hidden text-sm text-gray-400 sm:mt-1.5 sm:block">{{
+        isLecturer ? "Lecturer Dashboard" : "Admin Dashboard"
+      }}</span>
       <strong class="block text-center text-xl text-cyan sm:hidden">SC</strong>
     </div>
     <div v-else class="border-b border-navy-600 px-2 py-5 sm:px-6 sm:py-7">
@@ -67,7 +85,9 @@ const handleSignOut = () => {
         <span class="mr-1 text-2xl">♢</span> Aegis ID
       </strong>
       <strong class="block text-center text-xl text-cyan sm:hidden">♢</strong>
-      <span class="hidden text-sm text-gray-400 sm:mt-1.5 sm:block">Secure Campus Access</span>
+      <span class="hidden text-sm text-gray-400 sm:mt-1.5 sm:block"
+        >Secure Campus Access</span
+      >
     </div>
 
     <!-- Nav -->
@@ -79,7 +99,7 @@ const handleSignOut = () => {
           'w-full border-l-4 py-4 text-center text-base transition-colors sm:px-5 sm:text-left',
           activeView === item.id
             ? 'bg-navy-700 text-cyan border-cyan'
-            : 'border-transparent text-gray-300 hover:bg-navy-700 hover:text-cyan'
+            : 'border-transparent text-gray-300 hover:bg-navy-700 hover:text-cyan',
         ]"
         @click="handleNav(item.id)"
       >
@@ -91,7 +111,7 @@ const handleSignOut = () => {
           'w-full border-l-4 py-4 text-center text-base transition-colors sm:px-5 sm:text-left',
           activeView === 'settings'
             ? 'bg-navy-700 text-cyan border-cyan'
-            : 'border-transparent text-gray-300 hover:bg-navy-700 hover:text-cyan'
+            : 'border-transparent text-gray-300 hover:bg-navy-700 hover:text-cyan',
         ]"
         @click="$emit('navigate', 'settings')"
       >
@@ -110,14 +130,32 @@ const handleSignOut = () => {
       >
         ⇥ <span class="hidden sm:inline">Sign Out</span>
       </button>
-      <div class="mt-5 flex items-center justify-center gap-3 border-t border-navy-600 pt-4 sm:justify-start">
-        <button type="button" class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-cyan-light text-[10px] font-bold text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan" aria-label="Upload profile picture" title="Upload profile picture" @click="profileUploader?.openPicker()">
-          <img v-if="profileImage" :src="profileImage" alt="" class="h-full w-full object-cover" />
+      <div
+        class="mt-5 flex items-center justify-center gap-3 border-t border-navy-600 pt-4 sm:justify-start"
+      >
+        <button
+          type="button"
+          class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-cyan-light text-[10px] font-bold text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan"
+          aria-label="Upload profile picture"
+          title="Upload profile picture"
+          @click="profileUploader?.openPicker()"
+        >
+          <img
+            v-if="profileImage"
+            :src="profileImage"
+            alt=""
+            class="h-full w-full object-cover"
+          />
           <span v-else>{{ userInitials }}</span>
         </button>
         <div class="hidden min-w-0 sm:block">
-          <strong class="block truncate text-sm">{{ currentUser?.name || currentUser?.email || 'User' }}</strong>
-          <small class="mt-0.5 block truncate font-mono text-[10px] text-gray-400">{{ currentUser?.role || '' }}</small>
+          <strong class="block truncate text-sm">{{
+            currentUser?.name || currentUser?.email || "User"
+          }}</strong>
+          <small
+            class="mt-0.5 block truncate font-mono text-[10px] text-gray-400"
+            >{{ currentUser?.role || "" }}</small
+          >
         </div>
       </div>
       <ProfileImageUpload ref="profileUploader" compact />

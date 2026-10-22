@@ -76,7 +76,6 @@ const formatDate = (iso: string) => {
     d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
   );
 };
-
 </script>
 
 <template>
@@ -97,11 +96,14 @@ const formatDate = (iso: string) => {
     <template v-if="!loading">
       <!-- Top layout -->
       <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[1.7fr_0.8fr]">
-        <article class="card flex min-h-[300px] flex-col justify-center p-8 text-center">
+        <article
+          class="card flex min-h-[300px] flex-col justify-center p-8 text-center"
+        >
           <h2 class="text-xl font-semibold">Attendance Summary</h2>
           <strong class="my-4 text-5xl">{{ attendance.length }}</strong>
           <p class="text-sm text-gray-500">
-            Records returned by your account. An attendance rate and target require course-session totals from the backend.
+            Records returned by your account. An attendance rate and target
+            require course-session totals from the backend.
           </p>
         </article>
 
@@ -110,7 +112,9 @@ const formatDate = (iso: string) => {
           <article
             class="bg-navy-light text-white rounded-lg p-7 min-h-[155px]"
           >
-            <small class="text-cyan font-mono text-[11px]">RECORDED CHECK-INS</small>
+            <small class="text-cyan font-mono text-[11px]"
+              >RECORDED CHECK-INS</small
+            >
             <strong class="block text-5xl my-4">{{ attendance.length }}</strong>
             <p class="font-mono text-[11px] text-gray-300">
               Returned by the attendance API
@@ -164,11 +168,27 @@ const formatDate = (iso: string) => {
           </thead>
           <tbody>
             <tr v-for="row in filteredAttendance" :key="row.id">
-              <td class="font-mono text-[12px] text-[#334155]">{{ formatDate(row.check_in_time) }}</td>
-              <td class="text-[#1f2d3d]">{{ row.sessions?.courses?.course_name || "Unknown" }}</td>
+              <td class="font-mono text-[12px] text-[#334155]">
+                {{ formatDate(row.check_in_time) }}
+              </td>
+              <td class="text-[#1f2d3d]">
+                {{ row.sessions?.courses?.course_name || "Unknown" }}
+              </td>
               <td>
-                <span class="inline-flex items-center gap-2 rounded border px-2 py-1 text-[10px] font-mono uppercase tracking-[0.08em]" :class="statusClass(row.status)">
-                  <span class="inline-block h-2 w-2 rounded-full" :class="row.status === 'Present' ? 'bg-[#2fb3d4]' : row.status === 'Absent' ? 'bg-[#ef4444]' : 'bg-[#94a3b8]'" />
+                <span
+                  class="inline-flex items-center gap-2 rounded border px-2 py-1 text-[10px] font-mono uppercase tracking-[0.08em]"
+                  :class="statusClass(row.status)"
+                >
+                  <span
+                    class="inline-block h-2 w-2 rounded-full"
+                    :class="
+                      row.status === 'Present'
+                        ? 'bg-[#2fb3d4]'
+                        : row.status === 'Absent'
+                          ? 'bg-[#ef4444]'
+                          : 'bg-[#94a3b8]'
+                    "
+                  />
                   {{ row.status }}
                 </span>
               </td>

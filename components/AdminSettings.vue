@@ -278,7 +278,8 @@ async function saveSettings() {
               class="w-full mt-4 accent-cyan"
             />
             <p class="text-xs text-gray-500 mt-2">
-              The backend applies its configured similarity threshold; displayed scores do not decide attendance acceptance.
+              The backend applies its configured similarity threshold; displayed
+              scores do not decide attendance acceptance.
             </p>
           </div>
           <label class="block mt-5 text-xs font-mono uppercase text-gray-500"
@@ -384,22 +385,48 @@ async function saveSettings() {
           >
             <div>
               <h2 class="text-xl font-semibold">Camera Node Configuration</h2>
-              <p class="mt-1 text-xs text-gray-500">Saved settings only; live connectivity requires a backend device-health integration.</p>
+              <p class="mt-1 text-xs text-gray-500">
+                Saved settings only; live connectivity requires a backend
+                device-health integration.
+              </p>
             </div>
-            <button class="btn-outline" @click="showNodeForm = !showNodeForm">+ Add Node</button>
+            <button class="btn-outline" @click="showNodeForm = !showNodeForm">
+              + Add Node
+            </button>
           </div>
-          <div v-if="showNodeForm" class="grid gap-3 border-b border-line py-4 sm:grid-cols-2">
-            <input v-model="nodeDraft.name" class="input-field" placeholder="Node name" aria-label="Node name" />
-            <input v-model="nodeDraft.location" class="input-field" placeholder="Location" aria-label="Node location" />
-            <input v-model="nodeDraft.firmware" class="input-field sm:col-span-2" placeholder="Firmware version (optional)" aria-label="Firmware version" />
-            <button class="btn-dark sm:col-span-2" @click="addNode">Add to saved settings</button>
+          <div
+            v-if="showNodeForm"
+            class="grid gap-3 border-b border-line py-4 sm:grid-cols-2"
+          >
+            <input
+              v-model="nodeDraft.name"
+              class="input-field"
+              placeholder="Node name"
+              aria-label="Node name"
+            />
+            <input
+              v-model="nodeDraft.location"
+              class="input-field"
+              placeholder="Location"
+              aria-label="Node location"
+            />
+            <input
+              v-model="nodeDraft.firmware"
+              class="input-field sm:col-span-2"
+              placeholder="Firmware version (optional)"
+              aria-label="Firmware version"
+            />
+            <button class="btn-dark sm:col-span-2" @click="addNode">
+              Add to saved settings
+            </button>
           </div>
           <div v-if="nodes.length === 0" class="p-6 text-center text-gray-400">
             No camera nodes configured.
           </div>
           <div v-else>
             <div class="table-head grid-cols-[2fr_1.5fr_1fr_0.8fr]">
-              <span>Name</span><span>Location</span><span>Firmware</span><span>Configuration</span>
+              <span>Name</span><span>Location</span><span>Firmware</span
+              ><span>Configuration</span>
             </div>
             <div
               v-for="(node, i) in nodes"

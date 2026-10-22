@@ -63,8 +63,15 @@ const formatDate = (iso: string | null) =>
     : "—";
 
 function exportCsv() {
-  const columns = ["student_name", "student_id", "status", "confidence_score", "check_in_time"];
-  const quote = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  const columns = [
+    "student_name",
+    "student_id",
+    "status",
+    "confidence_score",
+    "check_in_time",
+  ];
+  const quote = (value: unknown) =>
+    `"${String(value ?? "").replaceAll('"', '""')}"`;
   const rows = props.attendance.map((record) => [
     record.students?.full_name,
     record.students?.student_id,
@@ -72,8 +79,13 @@ function exportCsv() {
     record.confidence_score,
     record.check_in_time,
   ]);
-  const csv = [columns.map(quote).join(","), ...rows.map((row) => row.map(quote).join(","))].join("\r\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const csv = [
+    columns.map(quote).join(","),
+    ...rows.map((row) => row.map(quote).join(",")),
+  ].join("\r\n");
+  const url = URL.createObjectURL(
+    new Blob([csv], { type: "text/csv;charset=utf-8" }),
+  );
   const link = document.createElement("a");
   link.href = url;
   link.download = `${props.session.session_code || `session-${props.session.id}`}-attendance.csv`;
@@ -145,7 +157,9 @@ function exportCsv() {
             <p class="font-mono text-[10px] uppercase text-gray-500">
               Avg Match Similarity
             </p>
-            <p class="text-2xl font-semibold mt-1">{{ formatMatchSimilarity(avgConfidence) }}</p>
+            <p class="text-2xl font-semibold mt-1">
+              {{ formatMatchSimilarity(avgConfidence) }}
+            </p>
           </div>
         </div>
 
@@ -155,7 +169,8 @@ function exportCsv() {
           </h3>
           <div class="card overflow-hidden">
             <div class="table-head grid-cols-[2fr_1.5fr_0.8fr]">
-              <span>Student</span><span>Reason</span><span>Match similarity</span>
+              <span>Student</span><span>Reason</span
+              ><span>Match similarity</span>
             </div>
             <div
               v-for="item in reviewItems"
@@ -194,8 +209,12 @@ function exportCsv() {
               </thead>
               <tbody>
                 <tr v-for="r in attendance" :key="r.id">
-                  <td class="font-medium">{{ r.students?.full_name || "Unknown" }}</td>
-                  <td class="font-mono text-xs text-gray-600">{{ r.students?.student_id || "—" }}</td>
+                  <td class="font-medium">
+                    {{ r.students?.full_name || "Unknown" }}
+                  </td>
+                  <td class="font-mono text-xs text-gray-600">
+                    {{ r.students?.student_id || "—" }}
+                  </td>
                   <td>
                     <span
                       :class="[
@@ -206,7 +225,8 @@ function exportCsv() {
                             ? 'status-pending'
                             : 'status-flagged',
                       ]"
-                    >{{ r.status }}</span>
+                      >{{ r.status }}</span
+                    >
                   </td>
                   <td class="whitespace-nowrap font-mono text-xs text-gray-500">
                     {{ formatTime(r.check_in_time) }}
@@ -222,9 +242,7 @@ function exportCsv() {
       </div>
 
       <div class="px-8 py-5 border-t border-line flex justify-end gap-3">
-        <button class="btn-outline" @click="exportCsv">
-          Export Report
-        </button>
+        <button class="btn-outline" @click="exportCsv">Export Report</button>
         <button class="btn-dark" @click="$emit('close')">Close</button>
       </div>
     </div>

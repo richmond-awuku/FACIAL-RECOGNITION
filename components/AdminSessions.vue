@@ -52,7 +52,11 @@ const manualAttendanceStatus = ref<"PRESENT" | "ABSENT" | "EXCUSED">("PRESENT");
 // Realtime subscription
 let subscription: any = null;
 
-const scanMatch = ref<{ name: string; id: string; confidence: number | null } | null>(null);
+const scanMatch = ref<{
+  name: string;
+  id: string;
+  confidence: number | null;
+} | null>(null);
 const scanning = ref(false);
 
 onMounted(async () => {
@@ -236,17 +240,29 @@ async function handleManualEntry() {
     showManualEntry.value = false;
     manualStudentId.value = "";
     manualAttendanceStatus.value = "PRESENT";
-    emit("notify", `${student.full_name}'s attendance was marked ${markedStatus.toLowerCase()}.`);
+    emit(
+      "notify",
+      `${student.full_name}'s attendance was marked ${markedStatus.toLowerCase()}.`,
+    );
   } catch (e: any) {
     emit("notify", `Error: ${e.message}`);
   }
 }
 
 async function scanClassroomFrame() {
-  if (!session.value || !videoRef.value || !cameraActive.value || scanning.value) return;
+  if (
+    !session.value ||
+    !videoRef.value ||
+    !cameraActive.value ||
+    scanning.value
+  )
+    return;
   const video = videoRef.value;
   if (!video.videoWidth || !video.videoHeight) {
-    emit("notify", "The camera is not ready. Wait for the video feed and try again.");
+    emit(
+      "notify",
+      "The camera is not ready. Wait for the video feed and try again.",
+    );
     return;
   }
   scanning.value = true;
@@ -258,33 +274,67 @@ async function scanClassroomFrame() {
     if (!context) throw new Error("Could not capture a frame from the camera.");
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     const image = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not encode the camera frame.")), "image/jpeg", 0.9);
+      canvas.toBlob(
+        (blob) =>
+          blob
+            ? resolve(blob)
+            : reject(new Error("Could not encode the camera frame.")),
+        "image/jpeg",
+        0.9,
+      );
     });
     const formData = new FormData();
     formData.append("image", image, "classroom-frame.jpg");
     const result = await api.scanClassroom(session.value.id, formData);
-    const recordsBefore = new Set(attendance.value.map((record) => String(record.id)));
+    const recordsBefore = new Set(
+      attendance.value.map((record) => String(record.id)),
+    );
     attendance.value = await api.getAttendanceBySession(session.value.id);
     await api.updateSessionStats(session.value.id);
     const sessions = await api.getActiveSessions();
     if (sessions.length > 0) session.value = sessions[0];
 
     const response = result as any;
-    const newRecord = attendance.value.find((record) => !recordsBefore.has(String(record.id)));
-    const matchedStudent = response?.student || response?.record?.student || newRecord?.students;
+    const newRecord = attendance.value.find(
+      (record) => !recordsBefore.has(String(record.id)),
+    );
+    const matchedStudent =
+      response?.student || response?.record?.student || newRecord?.students;
     if (matchedStudent) {
       scanMatch.value = {
-        name: matchedStudent.full_name || [matchedStudent.first_name, matchedStudent.last_name].filter(Boolean).join(" ") || "Recognized student",
-        id: matchedStudent.student_id || matchedStudent.student_id_number || String(matchedStudent.id ?? ""),
-        confidence: response?.confidence_score ?? response?.record?.confidence_score ?? newRecord?.confidence_score ?? null,
+        name:
+          matchedStudent.full_name ||
+          [matchedStudent.first_name, matchedStudent.last_name]
+            .filter(Boolean)
+            .join(" ") ||
+          "Recognized student",
+        id:
+          matchedStudent.student_id ||
+          matchedStudent.student_id_number ||
+          String(matchedStudent.id ?? ""),
+        confidence:
+          response?.confidence_score ??
+          response?.record?.confidence_score ??
+          newRecord?.confidence_score ??
+          null,
       };
       emit("notify", `Face scan completed for ${scanMatch.value.name}.`);
-      setTimeout(() => { scanMatch.value = null; }, 4000);
+      setTimeout(() => {
+        scanMatch.value = null;
+      }, 4000);
     } else {
-      emit("notify", response?.detail || response?.message || "Scan completed; the backend did not return a matched student.");
+      emit(
+        "notify",
+        response?.detail ||
+          response?.message ||
+          "Scan completed; the backend did not return a matched student.",
+      );
     }
   } catch (e: any) {
-    emit("notify", `Scan error: ${e?.message || "Unable to process the camera frame."}`);
+    emit(
+      "notify",
+      `Scan error: ${e?.message || "Unable to process the camera frame."}`,
+    );
   } finally {
     scanning.value = false;
   }
@@ -444,9 +494,9 @@ async function scanClassroomFrame() {
                 >
                   <b class="font-mono text-xs"
                     >MATCH SIMILARITY
-                    <span class="text-cyan float-right"
-                      >{{ formatMatchSimilarity(scanMatch.confidence) }}</span
-                    ></b
+                    <span class="text-cyan float-right">{{
+                      formatMatchSimilarity(scanMatch.confidence)
+                    }}</span></b
                   >
                   <strong class="text-sm">{{ scanMatch.name }}</strong>
                   <small class="text-gray-500 font-mono"
@@ -462,7 +512,7 @@ async function scanClassroomFrame() {
                 :disabled="scanning"
                 @click="scanClassroomFrame"
               >
-                {{ scanning ? 'Processing frame...' : 'Scan Classroom Frame' }}
+                {{ scanning ? "Processing frame..." : "Scan Classroom Frame" }}
               </button>
             </template>
           </div>
@@ -486,7 +536,8 @@ async function scanClassroomFrame() {
                 ></strong
               >
               <b class="text-cyan text-3xl leading-none"
-                >{{ formatMatchSimilarity(session.avg_confidence) }}<em
+                >{{ formatMatchSimilarity(session.avg_confidence)
+                }}<em
                   class="block text-gray-300 font-mono text-[11px] mt-2 not-italic"
                   >AVG MATCH SIMILARITY</em
                 ></b

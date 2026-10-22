@@ -5,14 +5,18 @@ type FetchOpts = { method?: string; body?: any };
 // ── token helpers ─────────────────────────────────────────
 function authHeaders() {
   try {
-    const access = localStorage.getItem("access") || sessionStorage.getItem("access");
+    const access =
+      localStorage.getItem("access") || sessionStorage.getItem("access");
     return access ? { Authorization: `Bearer ${access}` } : {};
   } catch {
     return {};
   }
 }
 
-function setTokens(tokens: { access?: string; refresh?: string } | null, remember = true) {
+function setTokens(
+  tokens: { access?: string; refresh?: string } | null,
+  remember = true,
+) {
   try {
     if (!tokens) {
       localStorage.removeItem("access");
@@ -204,9 +208,12 @@ function normAttendance(r: any): any {
   return {
     ...r,
     id: r.id,
-    student_id: studentObj ? r.student.id : r.student ?? r.student_id ?? r.student_id_number,
+    student_id: studentObj
+      ? r.student.id
+      : (r.student ?? r.student_id ?? r.student_id_number),
     session_id: sessionObj ? r.session.id : r.session,
-    status: ATTENDANCE_STATUS[String(r.status ?? "PRESENT").toUpperCase()] ??
+    status:
+      ATTENDANCE_STATUS[String(r.status ?? "PRESENT").toUpperCase()] ??
       r.status ??
       "Present",
     confidence_score: r.confidence_score ?? r.confidence ?? null,
@@ -283,7 +290,10 @@ export function useApi() {
     const data = await res.json();
     // SimpleJWT rotates the refresh token on every use and blacklists the old one,
     // so persist BOTH values that come back.
-    setTokens({ access: data.access, refresh: data.refresh }, !!persistentRefresh);
+    setTokens(
+      { access: data.access, refresh: data.refresh },
+      !!persistentRefresh,
+    );
     return data;
   }
 
@@ -345,7 +355,10 @@ export function useApi() {
       method: "POST",
       body: { [field]: identifier, password },
     });
-    setTokens({ access: data.access, refresh: data.refresh }, opts.remember !== false);
+    setTokens(
+      { access: data.access, refresh: data.refresh },
+      opts.remember !== false,
+    );
     return data;
   }
 
@@ -356,7 +369,8 @@ export function useApi() {
   async function logout() {
     let refresh: string | null = null;
     try {
-      refresh = localStorage.getItem("refresh") || sessionStorage.getItem("refresh");
+      refresh =
+        localStorage.getItem("refresh") || sessionStorage.getItem("refresh");
     } catch {
       /* noop */
     }
@@ -375,11 +389,13 @@ export function useApi() {
   async function createUser(payload: any) {
     return call("/api/auth/users/", { method: "POST", body: payload });
   }
-  async function getUsers(params: {
-    search?: string;
-    role?: string;
-    is_active?: boolean | "";
-  } = {}) {
+  async function getUsers(
+    params: {
+      search?: string;
+      role?: string;
+      is_active?: boolean | "";
+    } = {},
+  ) {
     const query = new URLSearchParams();
     if (params.search?.trim()) query.set("search", params.search.trim());
     if (params.role) query.set("role", params.role);
@@ -401,7 +417,11 @@ export function useApi() {
       body: { email },
     });
   }
-  async function confirmPasswordReset(email: string, code: string, newPassword: string) {
+  async function confirmPasswordReset(
+    email: string,
+    code: string,
+    newPassword: string,
+  ) {
     return call("/api/auth/password-reset/confirm/", {
       method: "POST",
       body: { email, code, new_password: newPassword },
@@ -493,12 +513,14 @@ export function useApi() {
   }
 
   // ── Courses ─────────────────────────────────────────────
-  async function getCourses(params: {
-    search?: string;
-    department?: string;
-    semester?: string;
-    lecturer?: string;
-  } = {}) {
+  async function getCourses(
+    params: {
+      search?: string;
+      department?: string;
+      semester?: string;
+      lecturer?: string;
+    } = {},
+  ) {
     const query = new URLSearchParams();
     if (params.search?.trim()) query.set("search", params.search.trim());
     if (params.department) query.set("department", params.department);
@@ -506,7 +528,9 @@ export function useApi() {
     if (params.lecturer) query.set("lecturer", params.lecturer);
     const queryString = query.toString();
     return asArray(
-      await call(`/api/classes/courses/${queryString ? `?${queryString}` : ""}`),
+      await call(
+        `/api/classes/courses/${queryString ? `?${queryString}` : ""}`,
+      ),
     ).map(normCourse);
   }
 
@@ -560,7 +584,10 @@ export function useApi() {
     return updateCourse(id, { students: studentIds.map((n) => Number(n)) });
   }
 
-  async function searchCourseStudents(courseId: string | number, search: string) {
+  async function searchCourseStudents(
+    courseId: string | number,
+    search: string,
+  ) {
     const query = search.trim()
       ? `?search=${encodeURIComponent(search.trim())}`
       : "";
@@ -716,9 +743,10 @@ export function useApi() {
     student_id: string;
     status?: "PRESENT" | "ABSENT" | "EXCUSED";
   }) {
-    const body: { student: string; status?: "PRESENT" | "ABSENT" | "EXCUSED" } = {
-      student: payload.student_id,
-    };
+    const body: { student: string; status?: "PRESENT" | "ABSENT" | "EXCUSED" } =
+      {
+        student: payload.student_id,
+      };
     if (payload.status) body.status = payload.status;
     return call(`/api/attendance/sessions/${payload.session_id}/manual/`, {
       method: "POST",
@@ -751,15 +779,17 @@ export function useApi() {
   async function getAuditLogs() {
     return asArray(await call("/api/attendance/audit-logs/"));
   }
-  async function getSystemAuditLogs(params: {
-    event_type?: string;
-    outcome?: string;
-    user?: string;
-    since?: string;
-    until?: string;
-    page?: number;
-    page_size?: number;
-  } = {}) {
+  async function getSystemAuditLogs(
+    params: {
+      event_type?: string;
+      outcome?: string;
+      user?: string;
+      since?: string;
+      until?: string;
+      page?: number;
+      page_size?: number;
+    } = {},
+  ) {
     const query = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== "") query.set(key, String(value));

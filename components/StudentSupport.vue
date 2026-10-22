@@ -146,7 +146,9 @@ async function submitTicket() {
         <tbody>
           <tr v-for="t in tickets" :key="t.id">
             <td class="font-medium text-[#1f2d3d]">{{ t.category }}</td>
-            <td class="text-gray-500 font-mono text-[12px]">{{ t.reference_id || "General" }}</td>
+            <td class="text-gray-500 font-mono text-[12px]">
+              {{ t.reference_id || "General" }}
+            </td>
             <td class="text-gray-600">{{ t.description }}</td>
             <td>
               <span
@@ -158,7 +160,8 @@ async function submitTicket() {
                       ? 'border-gray-300 bg-gray-100 text-gray-600'
                       : 'border-red-300 bg-red-50 text-danger',
                 ]"
-              >{{ t.status }}</span>
+                >{{ t.status }}</span
+              >
             </td>
           </tr>
         </tbody>

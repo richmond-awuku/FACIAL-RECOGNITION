@@ -195,10 +195,16 @@ async function submitOverride() {
             </thead>
             <tbody>
               <tr v-for="course in courses" :key="course.id">
-                <td class="font-mono text-[12px] text-[#334155]">{{ course.course_code }}</td>
+                <td class="font-mono text-[12px] text-[#334155]">
+                  {{ course.course_code }}
+                </td>
                 <td>
-                  <div class="font-medium text-[#1f2d3d]">{{ course.course_name }}</div>
-                  <small class="block text-[11px] text-gray-500 font-mono mt-1">{{ course.professor }} | {{ course.room }}</small>
+                  <div class="font-medium text-[#1f2d3d]">
+                    {{ course.course_name }}
+                  </div>
+                  <small class="block text-[11px] text-gray-500 font-mono mt-1"
+                    >{{ course.professor }} | {{ course.room }}</small
+                  >
                 </td>
                 <td>{{ course.credits }} CR</td>
               </tr>
@@ -229,11 +235,21 @@ async function submitOverride() {
             </thead>
             <tbody>
               <tr v-for="(scan, index) in recentAttendance" :key="scan.id">
-                <td class="font-mono text-[11px] text-[#64748b]">{{ formatScanTime(scan.check_in_time, index) }}</td>
-                <td class="font-medium text-[#1f2d3d]">{{ scan.sessions?.courses?.course_name || "Unknown Course" }}</td>
+                <td class="font-mono text-[11px] text-[#64748b]">
+                  {{ formatScanTime(scan.check_in_time, index) }}
+                </td>
+                <td class="font-medium text-[#1f2d3d]">
+                  {{ scan.sessions?.courses?.course_name || "Unknown Course" }}
+                </td>
                 <td>
-                  <span class="inline-flex rounded bg-cyan-light/20 px-2 py-1 text-[10px] font-mono text-cyan-dark">
-                    {{ scan.status === "Present" ? "MATCH FOUND" : scan.status.toUpperCase() }}
+                  <span
+                    class="inline-flex rounded bg-cyan-light/20 px-2 py-1 text-[10px] font-mono text-cyan-dark"
+                  >
+                    {{
+                      scan.status === "Present"
+                        ? "MATCH FOUND"
+                        : scan.status.toUpperCase()
+                    }}
                   </span>
                 </td>
                 <td class="font-mono text-[11px] text-[#334155]">
