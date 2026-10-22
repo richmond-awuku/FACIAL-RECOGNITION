@@ -30,6 +30,13 @@ onMounted(async () => {
     ]);
     students.value = studentData;
     activeSessions.value = sessionData;
+    recentRecords.value = [...attendanceRecords]
+      .sort((left, right) => {
+        const leftTime = new Date(left.check_in_time || left.created_at || 0).getTime();
+        const rightTime = new Date(right.check_in_time || right.created_at || 0).getTime();
+        return rightTime - leftTime;
+      })
+      .slice(0, 5);
     const today = new Date().toLocaleDateString();
     todayCheckIns.value = attendanceRecords.filter((record) => {
       const timestamp = record.check_in_time || record.created_at;
@@ -38,10 +45,6 @@ onMounted(async () => {
         new Date(timestamp).toLocaleDateString() === today;
     }).length;
 
-    if (sessionData.length > 0) {
-      const records = await api.getAttendanceBySession(sessionData[0].id);
-      recentRecords.value = ((records || []) as any).slice(0, 5);
-    }
   } catch (e: any) {
     error.value = e.message;
   } finally {
