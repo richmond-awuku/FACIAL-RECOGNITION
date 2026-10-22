@@ -2,19 +2,31 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useApi } from "~/composables/useApi";
 
+interface AuditLog {
+  id: number | string;
+  who: string;
+  what: string;
+  timestamp: string;
+  outcome: string;
+  subject: string | null;
+  record_type: string | null;
+  record_id: string | null;
+  record_ids: string[];
+}
+
 const api = useApi();
-const logs = ref<any[]>([]);
+const logs = ref<AuditLog[]>([]);
 const count = ref(0);
 const page = ref(1);
 const pageSize = ref(50);
 const loading = ref(false);
 const error = ref("");
 const filters = reactive({
-  event_type: "",
+  search: "",
+  period: "",
   outcome: "",
-  user: "",
-  since: "",
-  until: "",
+  date_from: "",
+  date_to: "",
 });
 const pageCount = computed(() =>
   Math.max(1, Math.ceil(count.value / pageSize.value)),
@@ -24,12 +36,21 @@ async function loadLogs() {
   loading.value = true;
   error.value = "";
   try {
+    const customRange = filters.period === "custom";
     const response = await api.getSystemAuditLogs({
-      ...filters,
+      search: filters.search,
+      outcome: filters.outcome,
+      period: customRange ? "" : filters.period,
+      date_from: customRange ? filters.date_from : "",
+      date_to: customRange ? filters.date_to : "",
       page: page.value,
       page_size: pageSize.value,
     });
-    logs.value = Array.isArray(response) ? response : (response?.results ?? []);
+    logs.value = Array.isArray(response)
+      ? response
+      : Array.isArray(response?.results)
+        ? response.results
+        : [];
     count.value = Number(response?.count ?? logs.value.length);
   } catch (err) {
     error.value =
@@ -44,56 +65,39 @@ async function loadLogs() {
 }
 
 function applyFilters() {
+  error.value = "";
+  if (filters.period === "custom") {
+    if (!filters.date_from && !filters.date_to) {
+      error.value = "Choose a start date, an end date, or both.";
+      return;
+    }
+    if (
+      filters.date_from &&
+      filters.date_to &&
+      filters.date_from > filters.date_to
+    ) {
+      error.value = "The end date must be on or after the start date.";
+      return;
+    }
+  }
   page.value = 1;
   loadLogs();
 }
 
 function clearFilters() {
   Object.assign(filters, {
-    event_type: "",
+    search: "",
+    period: "",
     outcome: "",
-    user: "",
-    since: "",
-    until: "",
+    date_from: "",
+    date_to: "",
   });
   applyFilters();
 }
 
-function actor(log: any) {
-  return typeof log.actor === "string"
-    ? log.actor
-    : log.actor?.full_name ||
-        log.actor?.username ||
-        log.actor?.email ||
-        log.actor_name ||
-        log.user_name ||
-        log.user?.email ||
-        "System";
-}
-
-function affectedAccount(log: any) {
-  return typeof log.affected_account === "string"
-    ? log.affected_account
-    : log.affected_account?.full_name ||
-        log.affected_account?.email ||
-        log.affected_user?.email ||
-        "—";
-}
-
-function details(log: any) {
-  const safeDetails = log.details;
-  return typeof safeDetails === "string"
-    ? safeDetails
-    : safeDetails
-      ? JSON.stringify(safeDetails)
-      : "—";
-}
-
-function eventTime(log: any) {
-  const value = log.timestamp || log.created_at;
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+function eventTime(log: AuditLog) {
+  const date = new Date(log.timestamp);
+  return Number.isNaN(date.getTime()) ? log.timestamp : date.toLocaleString();
 }
 
 onMounted(loadLogs);
@@ -106,45 +110,58 @@ onMounted(loadLogs);
         System Audit
       </h1>
       <p class="mt-1 text-sm text-[#64748b]">
-        Cross-system activity and security events.
+        Who did what, when, and which record was affected.
       </p>
     </header>
 
     <form
-      class="grid grid-cols-1 gap-3 border-y border-[#dfe5eb] py-4 sm:grid-cols-2 xl:grid-cols-6"
+      class="grid grid-cols-1 gap-3 border-y border-[#dfe5eb] py-4 sm:grid-cols-2 xl:grid-cols-5"
       @submit.prevent="applyFilters"
     >
-      <label class="text-xs font-medium text-gray-600"
-        >Event type
+      <label class="text-xs font-medium text-gray-600">
+        Search
         <input
-          v-model="filters.event_type"
+          v-model="filters.search"
           class="input-field mt-1"
-          placeholder="e.g. LOGIN"
+          placeholder="Name, action, subject, or record ID"
         />
       </label>
-      <label class="text-xs font-medium text-gray-600"
-        >Outcome
+      <label class="text-xs font-medium text-gray-600">
+        Date range
+        <select v-model="filters.period" class="input-field mt-1">
+          <option value="">All time</option>
+          <option value="today">Today</option>
+          <option value="week">This week</option>
+          <option value="month">This month</option>
+          <option value="year">This year</option>
+          <option value="custom">Custom range</option>
+        </select>
+      </label>
+      <template v-if="filters.period === 'custom'">
+        <label class="text-xs font-medium text-gray-600">
+          From
+          <input
+            v-model="filters.date_from"
+            type="date"
+            class="input-field mt-1"
+          />
+        </label>
+        <label class="text-xs font-medium text-gray-600">
+          To
+          <input
+            v-model="filters.date_to"
+            type="date"
+            class="input-field mt-1"
+          />
+        </label>
+      </template>
+      <label class="text-xs font-medium text-gray-600">
+        Outcome
         <select v-model="filters.outcome" class="input-field mt-1">
           <option value="">All outcomes</option>
           <option value="SUCCESS">Success</option>
           <option value="FAILURE">Failure</option>
         </select>
-      </label>
-      <label class="text-xs font-medium text-gray-600"
-        >User
-        <input
-          v-model="filters.user"
-          class="input-field mt-1"
-          placeholder="User ID or name"
-        />
-      </label>
-      <label class="text-xs font-medium text-gray-600"
-        >Since
-        <input v-model="filters.since" type="date" class="input-field mt-1" />
-      </label>
-      <label class="text-xs font-medium text-gray-600"
-        >Until
-        <input v-model="filters.until" type="date" class="input-field mt-1" />
       </label>
       <div class="flex items-end gap-2">
         <button type="submit" class="btn-dark flex-1">Apply</button>
@@ -168,47 +185,46 @@ onMounted(loadLogs);
     </p>
     <div v-else class="panel-surface overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="data-table min-w-[1050px]">
+        <table class="data-table min-w-[760px]">
           <thead>
             <tr>
-              <th>Event</th>
+              <th>ID</th>
+              <th>Who</th>
+              <th>What</th>
+              <th>Subject</th>
               <th>Outcome</th>
-              <th>Actor</th>
-              <th>Affected account</th>
-              <th>Request</th>
-              <th>Details</th>
-              <th>Timestamp</th>
+              <th>When</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(log, index) in logs" :key="log.id ?? index">
+            <tr v-for="log in logs" :key="log.id">
+              <td class="font-mono text-xs text-gray-500">
+                {{ log.id }}
+              </td>
               <td class="font-medium">
-                {{ log.event_type || log.event || "Audit event" }}
+                {{ log.who || "Unknown user" }}
+              </td>
+              <td class="max-w-[360px] break-words font-medium">
+                {{ log.what || "Activity recorded" }}
               </td>
               <td>
-                {{ log.outcome || "—"
-                }}<span v-if="log.http_status || log.status_code">
-                  · {{ log.http_status || log.status_code }}</span
+                {{ log.subject || "—" }}
+              </td>
+              <td>
+                <span
+                  class="rounded-full px-2 py-1 text-xs font-medium"
+                  :class="
+                    log.outcome?.toLowerCase() === 'success'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : log.outcome?.toLowerCase() === 'failure'
+                        ? 'bg-rose-50 text-rose-700'
+                        : 'bg-gray-100 text-gray-600'
+                  "
                 >
+                  {{ log.outcome || "—" }}
+                </span>
               </td>
-              <td>{{ actor(log) }}</td>
-              <td>{{ affectedAccount(log) }}</td>
-              <td class="max-w-[220px] break-words font-mono text-xs">
-                {{
-                  [
-                    log.method,
-                    log.route || log.path,
-                    log.ip_address,
-                    log.user_agent,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "—"
-                }}
-              </td>
-              <td class="max-w-[260px] break-words text-xs">
-                {{ details(log) }}
-              </td>
-              <td class="whitespace-nowrap font-mono text-xs text-gray-500">
+              <td class="whitespace-nowrap text-xs text-gray-500">
                 {{ eventTime(log) }}
               </td>
             </tr>

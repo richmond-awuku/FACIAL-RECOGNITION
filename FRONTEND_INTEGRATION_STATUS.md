@@ -33,8 +33,11 @@ the response details here are limited to that update's confirmed contract.
 - **Manual attendance:** the active-session dialog now sends `PRESENT`, `ABSENT`, or `EXCUSED` to
   `POST /api/attendance/sessions/:id/manual/`; refreshed records normalize the backend's uppercase
   status enums for the UI. The backend updates an existing student/session record in place.
-- **Audit logs:** System Logs displays face-recognition scan/check-in attempts. An empty list is
-  expected until a real `scan-classroom` or `checkin` call has been made.
+- **System audit:** The admin System Audit screen calls paginated `GET /api/audit-logs/` and
+  displays the compact `id`, `who`, `what`, `subject`, `outcome`, and `timestamp` fields. It
+  supports searching and today/week/month/year or inclusive custom date filters. The separate
+  Attendance Logs screen continues to show face-recognition scan/check-in attempts from
+  `/api/attendance/audit-logs/`.
 - **Backend fixes not yet surfaced as frontend features:** the notification inbox endpoints and
   authenticated profile-photo API are now available according to the update, but this frontend
   adapter/UI does not yet call them. The detailed notification item and profile upload/read payload

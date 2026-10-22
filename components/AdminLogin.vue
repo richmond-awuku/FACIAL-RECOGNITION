@@ -98,6 +98,22 @@ const submitPasswordReset = async () => {
     resetLoading.value = false;
   }
 };
+
+const resendPasswordResetCode = async () => {
+  resetError.value = "";
+  resetNotice.value = "";
+  resetLoading.value = true;
+  try {
+    await api.requestPasswordReset(resetEmail.value.trim());
+    resetCode.value = "";
+    resetNotice.value =
+      "If an account uses this email, a new code was requested. Any previous code is no longer valid.";
+  } catch (e: any) {
+    resetError.value = e.message || "Unable to resend the reset code.";
+  } finally {
+    resetLoading.value = false;
+  }
+};
 </script>
 
 <template>
@@ -203,6 +219,15 @@ const submitPasswordReset = async () => {
               placeholder="000000"
             />
           </label>
+          <button
+            v-if="resetStep === 'confirm'"
+            type="button"
+            :disabled="resetLoading"
+            class="mt-2 text-sm text-gray-600 underline hover:text-navy disabled:opacity-50"
+            @click="resendPasswordResetCode"
+          >
+            Resend code
+          </button>
           <label
             v-if="resetStep === 'confirm'"
             class="mt-5 block text-ink font-mono text-[11px] tracking-wide"

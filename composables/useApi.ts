@@ -781,6 +781,10 @@ export function useApi() {
   }
   async function getSystemAuditLogs(
     params: {
+      search?: string;
+      period?: string;
+      date_from?: string;
+      date_to?: string;
       event_type?: string;
       outcome?: string;
       user?: string;
