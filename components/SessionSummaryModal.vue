@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { formatMatchSimilarity } from "~/composables/useConfidence";
 import type {
   Session,
   Course,
@@ -142,9 +143,9 @@ function exportCsv() {
           </div>
           <div class="card p-4 text-center">
             <p class="font-mono text-[10px] uppercase text-gray-500">
-              Avg Confidence
+              Avg Match Similarity
             </p>
-            <p class="text-2xl font-semibold mt-1">{{ avgConfidence }}%</p>
+            <p class="text-2xl font-semibold mt-1">{{ formatMatchSimilarity(avgConfidence) }}</p>
           </div>
         </div>
 
@@ -154,7 +155,7 @@ function exportCsv() {
           </h3>
           <div class="card overflow-hidden">
             <div class="table-head grid-cols-[2fr_1.5fr_0.8fr]">
-              <span>Student</span><span>Reason</span><span>Confidence</span>
+              <span>Student</span><span>Reason</span><span>Match similarity</span>
             </div>
             <div
               v-for="item in reviewItems"
@@ -166,9 +167,7 @@ function exportCsv() {
               }}</span>
               <span class="text-gray-500 truncate">{{ item.reason }}</span>
               <span class="font-mono text-sm flex-shrink-0">{{
-                item.confidence_score != null
-                  ? item.confidence_score + "%"
-                  : "—"
+                formatMatchSimilarity(item.confidence_score)
               }}</span>
             </div>
           </div>
@@ -190,7 +189,7 @@ function exportCsv() {
                   <th class="w-[22%]">Student ID</th>
                   <th class="w-[16%]">Status</th>
                   <th class="w-[18%]">Check-in</th>
-                  <th class="w-[14%] text-right">Confidence</th>
+                  <th class="w-[14%] text-right">Match similarity</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,7 +212,7 @@ function exportCsv() {
                     {{ formatTime(r.check_in_time) }}
                   </td>
                   <td class="text-right font-mono text-xs text-gray-600">
-                    {{ r.confidence_score != null ? `${Number(r.confidence_score).toFixed(1)}%` : "—" }}
+                    {{ formatMatchSimilarity(r.confidence_score) }}
                   </td>
                 </tr>
               </tbody>

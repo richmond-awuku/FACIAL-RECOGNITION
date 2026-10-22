@@ -68,9 +68,9 @@ export function usePortal() {
     return data
   }
 
-  const adminLogin = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const adminLogin = async (email: string, password: string, remember = true): Promise<{ success: boolean; error?: string }> => {
     try {
-      await api.login(email, password, { as: 'email' })
+      await api.login(email, password, { as: 'email', remember })
       heldPassword.value = password
       const me = await api.getMe()
       if (me?.must_change_password) {
@@ -172,7 +172,12 @@ export function usePortal() {
     try {
       let hasToken = false
       try {
-        hasToken = !!(localStorage.getItem('access') || localStorage.getItem('refresh'))
+        hasToken = !!(
+          localStorage.getItem('access') ||
+          localStorage.getItem('refresh') ||
+          sessionStorage.getItem('access') ||
+          sessionStorage.getItem('refresh')
+        )
       } catch {
         hasToken = false
       }

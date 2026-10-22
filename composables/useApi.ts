@@ -5,22 +5,28 @@ type FetchOpts = { method?: string; body?: any };
 // ── token helpers ─────────────────────────────────────────
 function authHeaders() {
   try {
-    const access = localStorage.getItem("access");
+    const access = localStorage.getItem("access") || sessionStorage.getItem("access");
     return access ? { Authorization: `Bearer ${access}` } : {};
   } catch {
     return {};
   }
 }
 
-function setTokens(tokens: { access?: string; refresh?: string } | null) {
+function setTokens(tokens: { access?: string; refresh?: string } | null, remember = true) {
   try {
     if (!tokens) {
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
+      sessionStorage.removeItem("access");
+      sessionStorage.removeItem("refresh");
       return;
     }
-    if (tokens.access) localStorage.setItem("access", tokens.access);
-    if (tokens.refresh) localStorage.setItem("refresh", tokens.refresh);
+    const storage = remember ? localStorage : sessionStorage;
+    const otherStorage = remember ? sessionStorage : localStorage;
+    otherStorage.removeItem("access");
+    otherStorage.removeItem("refresh");
+    if (tokens.access) storage.setItem("access", tokens.access);
+    if (tokens.refresh) storage.setItem("refresh", tokens.refresh);
   } catch {
     // noop
   }
@@ -264,7 +270,8 @@ export function useApi() {
   }
 
   async function tryRefresh() {
-    const refresh = localStorage.getItem("refresh");
+    const persistentRefresh = localStorage.getItem("refresh");
+    const refresh = persistentRefresh || sessionStorage.getItem("refresh");
     if (!refresh) throw new Error("No refresh token");
     const res = await fetch(`${base}/api/auth/token/refresh/`, {
       method: "POST",
@@ -275,7 +282,7 @@ export function useApi() {
     const data = await res.json();
     // SimpleJWT rotates the refresh token on every use and blacklists the old one,
     // so persist BOTH values that come back.
-    setTokens({ access: data.access, refresh: data.refresh });
+    setTokens({ access: data.access, refresh: data.refresh }, !!persistentRefresh);
     return data;
   }
 
@@ -330,14 +337,14 @@ export function useApi() {
   async function login(
     identifier: string,
     password: string,
-    opts: { as?: "email" | "username" } = {},
+    opts: { as?: "email" | "username"; remember?: boolean } = {},
   ) {
     const field = opts.as === "email" ? "email" : "username";
     const data = await call("/api/auth/login/", {
       method: "POST",
       body: { [field]: identifier, password },
     });
-    setTokens({ access: data.access, refresh: data.refresh });
+    setTokens({ access: data.access, refresh: data.refresh }, opts.remember !== false);
     return data;
   }
 
@@ -348,7 +355,7 @@ export function useApi() {
   async function logout() {
     let refresh: string | null = null;
     try {
-      refresh = localStorage.getItem("refresh");
+      refresh = localStorage.getItem("refresh") || sessionStorage.getItem("refresh");
     } catch {
       /* noop */
     }
@@ -385,6 +392,18 @@ export function useApi() {
     return call("/api/auth/change-password/", {
       method: "POST",
       body: { old_password: oldPassword, new_password: newPassword },
+    });
+  }
+  async function requestPasswordReset(email: string) {
+    return call("/api/auth/password-reset/", {
+      method: "POST",
+      body: { email },
+    });
+  }
+  async function confirmPasswordReset(email: string, code: string, newPassword: string) {
+    return call("/api/auth/password-reset/confirm/", {
+      method: "POST",
+      body: { email, code, new_password: newPassword },
     });
   }
 
@@ -731,6 +750,21 @@ export function useApi() {
   async function getAuditLogs() {
     return asArray(await call("/api/attendance/audit-logs/"));
   }
+  async function getSystemAuditLogs(params: {
+    event_type?: string;
+    outcome?: string;
+    user?: string;
+    since?: string;
+    until?: string;
+    page?: number;
+    page_size?: number;
+  } = {}) {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== "") query.set(key, String(value));
+    }
+    return call(`/api/audit-logs/${query.size ? `?${query.toString()}` : ""}`);
+  }
 
   // ── Session review items ────────────────────────────────
   async function getSessionReviewItems(sessionId: string) {
@@ -950,6 +984,8 @@ export function useApi() {
     createUser,
     getUsers,
     changePassword,
+    requestPasswordReset,
+    confirmPasswordReset,
     // students
     getStudents,
     getStudentByStudentId,
@@ -993,6 +1029,7 @@ export function useApi() {
     scanClassroom,
     checkIn,
     getAuditLogs,
+    getSystemAuditLogs,
     // review items
     getSessionReviewItems,
     getReviewItems,

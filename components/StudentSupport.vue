@@ -178,7 +178,7 @@ async function submitTicket() {
             },
             {
               q: 'How accurate is the facial recognition?',
-              a: 'The system uses high-fidelity matching with a configurable confidence threshold. Matches below the threshold are flagged for manual review by your lecturer.',
+              a: 'The system compares face-match similarity scores against the backend threshold. Scores are not probabilities, and the backend decides whether attendance needs manual review.',
             },
             {
               q: 'How is my biometric data protected?',

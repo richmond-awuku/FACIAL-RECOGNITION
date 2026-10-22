@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { usePortal } from "~/composables/usePortal";
 import { useApi } from "~/composables/useApi";
+import { formatMatchSimilarity } from "~/composables/useConfidence";
 import type { AttendanceRecord, Session, Course } from "~/types/database";
 
 const emit = defineEmits<{
@@ -223,7 +224,7 @@ async function submitOverride() {
                 <th class="w-[28%]">Time</th>
                 <th class="w-[34%]">Course</th>
                 <th class="w-[18%]">Status</th>
-                <th class="w-[20%]">Confidence</th>
+                <th class="w-[20%]">Match similarity</th>
               </tr>
             </thead>
             <tbody>
@@ -236,7 +237,7 @@ async function submitOverride() {
                   </span>
                 </td>
                 <td class="font-mono text-[11px] text-[#334155]">
-                  {{ scan.confidence_score ? Number(scan.confidence_score).toFixed(1) + "%" : "N/A" }}
+                  {{ formatMatchSimilarity(scan.confidence_score) }}
                 </td>
               </tr>
             </tbody>

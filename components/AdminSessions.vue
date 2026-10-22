@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useApi } from "~/composables/useApi";
+import { formatMatchSimilarity } from "~/composables/useConfidence";
 import type {
   Session,
   Course,
@@ -442,9 +443,9 @@ async function scanClassroomFrame() {
                   class="absolute top-[164px] -left-4 w-[200px] p-2.5 bg-gray-200 text-ink rounded flex flex-col gap-1 z-10"
                 >
                   <b class="font-mono text-xs"
-                    >MATCH FOUND
+                    >MATCH SIMILARITY
                     <span class="text-cyan float-right"
-                      >{{ scanMatch.confidence == null ? '—' : `${scanMatch.confidence}%` }}</span
+                      >{{ formatMatchSimilarity(scanMatch.confidence) }}</span
                     ></b
                   >
                   <strong class="text-sm">{{ scanMatch.name }}</strong>
@@ -485,9 +486,9 @@ async function scanClassroomFrame() {
                 ></strong
               >
               <b class="text-cyan text-3xl leading-none"
-                >{{ Number(session.avg_confidence).toFixed(1) }}%<em
+                >{{ formatMatchSimilarity(session.avg_confidence) }}<em
                   class="block text-gray-300 font-mono text-[11px] mt-2 not-italic"
-                  >AVG CONFIDENCE</em
+                  >AVG MATCH SIMILARITY</em
                 ></b
               >
             </div>

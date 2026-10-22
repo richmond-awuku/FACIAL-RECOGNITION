@@ -36,8 +36,8 @@ function eventTime(log: any) {
 <template>
   <section class="space-y-6">
     <div>
-      <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">System Logs</h1>
-      <p class="mt-1.5 text-[15px] text-[#64748b]">Face-recognition scan and check-in attempts recorded by the backend.</p>
+      <h1 class="text-[42px] font-semibold tracking-[-0.06em] text-[#1d2b3a]">Attendance Logs</h1>
+      <p class="mt-1.5 text-[15px] text-[#64748b]">Face-recognition scan and check-in attempts recorded by the attendance service.</p>
     </div>
     <p v-if="loading" class="text-sm text-gray-500">Loading audit logs...</p>
     <p v-else-if="error" class="text-sm text-danger">{{ error }}</p>

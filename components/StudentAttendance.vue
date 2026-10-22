@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { usePortal } from "~/composables/usePortal";
 import { useApi } from "~/composables/useApi";
+import { formatMatchSimilarity } from "~/composables/useConfidence";
 import type { AttendanceRecord, Session, Course } from "~/types/database";
 
 const emit = defineEmits<{
@@ -158,7 +159,7 @@ const formatDate = (iso: string) => {
               <th class="w-[30%]">Date / Time</th>
               <th class="w-[34%]">Course Name</th>
               <th class="w-[18%]">Status</th>
-              <th class="w-[18%]">Rec. Confidence</th>
+              <th class="w-[18%]">Match similarity</th>
             </tr>
           </thead>
           <tbody>
@@ -172,7 +173,7 @@ const formatDate = (iso: string) => {
                 </span>
               </td>
               <td class="font-mono text-[12px] text-[#334155] text-right">
-                {{ row.confidence_score ? Number(row.confidence_score).toFixed(1) + "%" : "N/A" }}
+                {{ formatMatchSimilarity(row.confidence_score) }}
               </td>
             </tr>
           </tbody>

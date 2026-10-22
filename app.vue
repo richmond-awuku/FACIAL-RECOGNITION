@@ -94,6 +94,9 @@ const handleSignOut = () => {
           <AdminLogs
             v-else-if="portal === 'admin' && isAdmin && adminView === 'logs'"
           />
+          <AdminAuditLogs
+            v-else-if="portal === 'admin' && isAdmin && adminView === 'audit-logs'"
+          />
           <UserManagement
             v-else-if="portal === 'admin' && isAdmin && adminView === 'user-management'"
           />

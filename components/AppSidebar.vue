@@ -20,7 +20,8 @@ const adminNav = [
   { id: 'class-management', label: 'Class Management', icon: '❏' },
   { id: 'roster', label: 'Student Roster', icon: '♙' },
   { id: 'analytics', label: 'Analytics', icon: '⌁' },
-  { id: 'logs', label: 'Logs', icon: '▤' },
+  { id: 'logs', label: 'Attendance Logs', icon: '▤' },
+  { id: 'audit-logs', label: 'System Audit', icon: '⌕' },
   { id: 'reports', label: 'Reports', icon: '▥' },
 ]
 

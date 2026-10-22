@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { useApi } from "~/composables/useApi";
+import { formatMatchSimilarity } from "~/composables/useConfidence";
 import type { Student, Session, AttendanceRecord } from "~/types/database";
 
 const emit = defineEmits<{
@@ -68,8 +69,7 @@ const formatTime = (iso: string) => {
 };
 
 const formatConfidence = (score: number | null) => {
-  if (score === null) return "N/A";
-  return `${Number(score).toFixed(1)}%`;
+  return formatMatchSimilarity(score);
 };
 </script>
 
@@ -163,7 +163,7 @@ const formatConfidence = (score: number | null) => {
               <th class="w-[30%]">Student Profile</th>
               <th class="w-[18%]">System ID</th>
               <th class="w-[18%]">Timestamp</th>
-              <th class="w-[12%]">Confidence</th>
+              <th class="w-[12%]">Match similarity</th>
             </tr>
           </thead>
           <tbody>

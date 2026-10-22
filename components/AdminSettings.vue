@@ -266,7 +266,7 @@ async function saveSettings() {
           </h2>
           <div class="mt-5 rounded-md border border-cyan-light bg-white p-4">
             <div class="flex justify-between font-medium">
-              <span>Recognition threshold</span
+              <span>Recognition match threshold</span
               ><strong>{{ biometrics.confidence_threshold }}%</strong>
             </div>
             <input
@@ -277,7 +277,7 @@ async function saveSettings() {
               class="w-full mt-4 accent-cyan"
             />
             <p class="text-xs text-gray-500 mt-2">
-              Matches below this confidence are sent for manual review.
+              The backend applies its configured similarity threshold; displayed scores do not decide attendance acceptance.
             </p>
           </div>
           <label class="block mt-5 text-xs font-mono uppercase text-gray-500"
